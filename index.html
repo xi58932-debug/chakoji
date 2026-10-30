@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>お茶コーチ · 初心者が自分の好きな中国茶を見つける</title>
+<style>
+  :root{
+    --bg:#f2f0e8; --ink:#1f2328; --sub:#5b6168; --line:#d6d2c4; --card:#fffdf8;
+    --accent:#4f7a3a; --accent2:#2f6f8f; --warn:#b5532f; --ok:#3c8d5a; --tea:#8a5a33;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans CJK JP",sans-serif;background:var(--bg);color:var(--ink);line-height:1.7}
+  header{padding:28px 32px 8px}
+  header h1{margin:0;font-size:28px;letter-spacing:1px}
+  header h1 small{font-size:15px;color:var(--sub);font-weight:normal;margin-left:10px}
+  header p{margin:6px 0 0;color:var(--sub);max-width:1150px}
+  .wrap{padding:0 32px 40px}
+  .stage{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:18px;margin-top:16px}
+  #viewer{position:relative;height:760px;background:#1c1b1a;border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:grab}
+  #viewer:active{cursor:grabbing}
+  #viewer canvas{display:block}
+  .lbl{position:absolute;transform:translate(-50%,-100%);pointer-events:none;font-size:12px;white-space:nowrap;
+       background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:var(--ink);
+       box-shadow:0 1px 3px rgba(0,0,0,.08);transition:opacity .3s}
+  .lbl.hot{border-color:var(--accent);color:var(--accent);font-weight:bold}
+  .lbl.dim{opacity:.3}
+  .lbl.teaL{font-size:11.5px}
+  .hint{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--sub);background:rgba(255,253,248,.8);padding:2px 8px;border-radius:6px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:12px;max-height:760px;overflow:auto}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  button{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;color:var(--ink)}
+  button:hover{border-color:var(--accent2)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.on{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+  button.go{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.tea{background:var(--tea);color:#fff;border-color:var(--tea)}
+  select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .box{border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font-size:13px;background:#fff}
+  .box h4{margin:0 0 6px;font-size:13px;color:var(--sub);font-weight:normal}
+  .demo{background:#f7f4ec;border-radius:10px;padding:8px 10px;font-size:12.5px}
+  .prow{display:grid;grid-template-columns:44px 1fr 110px;align-items:center;gap:8px;font-size:13px;margin:3px 0}
+  .prow input{width:100%}
+  .prow b{text-align:right;font-variant-numeric:tabular-nums}
+  .bar{display:grid;grid-template-columns:52px 1fr 34px;align-items:center;gap:6px;font-size:12.5px;margin:2px 0}
+  .bar i{display:block;height:8px;border-radius:4px;background:#e9e5da;position:relative;overflow:hidden}
+  .bar i span{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+  .bar em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:var(--sub)}
+  .rate{display:flex;align-items:center;gap:8px}
+  .rate input{flex:1}
+  .quick{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .quick button{font-size:12px;padding:3px 8px}
+  .say{display:flex;gap:6px}
+  .say input{flex:1;font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px}
+  .coach{border:1px solid #cfe0c4;background:#f6faf2;border-radius:10px;padding:10px 12px;font-size:13px}
+  .coach h4{margin:0 0 6px;font-size:13px;color:var(--accent)}
+  .coach.teaC{border-color:#e2cdb8;background:#fbf6f0}
+  .coach.teaC h4{color:var(--tea)}
+  .guess{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+  .guess button small{display:block;font-size:11px;color:var(--sub);line-height:1.35}
+  table.mini{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.mini td,table.mini th{padding:3px 4px;border-bottom:1px solid #eee;text-align:left}
+  table.mini th{color:var(--sub);font-weight:normal}
+  table.mini tr.sel td{background:#eef6e8;font-weight:bold}
+  table.mini button{font-size:11.5px;padding:1px 6px}
+  .readout{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+  .readout div{background:#f6f3ec;border-radius:8px;padding:6px 8px}
+  .readout small{display:block;color:var(--sub);font-size:11.5px}
+  .readout b{font-size:18px;font-variant-numeric:tabular-nums}
+  .trait{display:inline-block;background:#f1ebe0;border-radius:6px;padding:0 6px;margin:2px 3px 2px 0;font-size:12.5px}
+  .teacard{border:2px solid var(--tea);border-radius:12px;padding:10px 12px;background:#fffaf3;font-size:13px}
+  .teacard h4{margin:0 0 6px;color:var(--tea);font-size:14px}
+  .teacard .row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #ead9c6;padding:2px 0}
+  .note{font-size:12px;color:var(--sub)}
+  .verdict{margin:6px 0;padding:6px 8px;border-radius:8px;font-size:13px}
+  .verdict.ok{background:#e6f2e9;color:var(--ok)}
+  .verdict.no{background:#f7ebe5;color:var(--warn)}
+  section{margin-top:34px}
+  section h2{font-size:21px;margin:0 0 12px;padding-left:10px;border-left:5px solid var(--accent)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px}
+  .card h3{margin:0 0 8px;font-size:16px}
+  .card ul{margin:0;padding-left:20px}
+  .card p{margin:0 0 6px}
+  .card.new{border-color:#d9c2a8;background:#fffaf3}
+  table.t{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13.5px}
+  table.t th{background:#e9e6da;text-align:left;padding:8px 10px;font-weight:bold}
+  table.t td{padding:8px 10px;border-top:1px solid #e6e2d6;vertical-align:top}
+  table.t a{color:var(--accent2)}
+  .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:6px;border:1px solid rgba(0,0,0,.15)}
+  .tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:4px;background:#e6efe9;color:var(--ok);margin-left:4px;white-space:nowrap}
+  .tag.mid{background:#f5eedb;color:#8a6a12}
+  .tag.hi{background:#f6e7e2;color:var(--warn)}
+  code.js{display:block;font-size:11.5px;background:#f6f3ec;border-radius:6px;padding:8px 10px;white-space:pre-wrap;word-break:break-all;color:#444}
+  .flow svg{width:100%;height:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  footer{padding:20px 32px 40px;color:var(--sub);font-size:12px}
+  @media (max-width:1150px){.stage{grid-template-columns:1fr}.panel{max-height:none}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div style="float:right;font-size:13px"><a href="zh.html" style="color:#2f6f8f">中文版</a></div>
+  <h1>お茶コーチ<small>初心者が「自分の好きな中国茶」を見つけるための抽出装置と、教える AI（コンセプト）</small></h1>
+  <p>「中国茶は苦い・渋い」と言う初心者の多くは、熱湯で長く淹れた一杯しか飲んだことがないのかもしれません。この装置は小さなカップで一杯ずつ淹れ、お茶の種類・湯温・時間・茶葉の量を記録します。「渋い」と言えば、コーチはモデルが出した候補から変え方を<b>一つ</b>選び、理由を説明します。何杯か調整すると、システムは評価と発言からその人の好みを推定し、次に試すお茶を、その人に合う淹れ方で淹れて出します。最後に「お茶・淹れ方・理由」を書いたお茶カードができあがります。</p>
+</header>
+
+<div class="wrap">
+  <div class="stage">
+    <div id="viewer"><div class="hint">ドラッグで回転 · ホイールで拡大縮小</div></div>
+    <div class="panel" id="panel"></div>
+  </div>
+
+  <section>
+    <h2>1. システム構成</h2>
+    <div class="grid2">
+      <div class="card"><h3>装置：抽出を制御する</h3>
+        <p>50 ml の小さなカップで一杯ずつ淹れます。制御する変数は三つです。</p>
+        <ul><li>湯温 60–100 °C</li><li>時間 30 秒–5 分</li><li>茶葉 0.5–3 g / 100 ml</li></ul>
+        <p class="note">背面に 7 種類のお茶のキャニスターがあり、選んだお茶を自動で量って入れます。洗茶、茶殻の排出、すすぎも自動です。一杯ごとに、お茶・条件・実際の温度曲線・評価を記録します。</p></div>
+      <div class="card"><h3>モデル：お茶 × 条件 → 知覚</h3>
+        <p>お茶の種類と三つの変数から、渋み・苦み・旨み・回甘・濃さ・香り・焙煎香・青み・熟成香を予測します。</p>
+        <p>モデルは Phase 1 の官能評価データから当てはめます。これがコーチの「知識」になります。</p>
+        <p class="note">このページで動いているのは、方向は常識どおりで、数値は作り話のおもちゃモデルです。</p></div>
+      <div class="card"><h3>インターフェース：淹れ方を調整する</h3>
+        <ul><li><b>B 直接操作</b>：スライダー三本を自分で動かし、淹れたら評価する。</li>
+        <li><b>C コーチ</b>：感想を言うと、コーチが候補から変数を<b>一つ</b>選んで変え、理由を説明する。</li></ul>
+        <p class="note">C には二種類あります。先に予想させてから答える（C2）と、すぐ教える（C1）です。</p></div>
+      <div class="card new"><h3>お茶探し：好みを「知覚」にひもづける</h3>
+        <ul>
+          <li>一杯ごとの評価と不満から<b>好みの推定</b>を作る。渋みに弱いか、焙煎香が好きか、などです。</li>
+          <li>この推定はお茶の種類に依存しないので、まだ飲んでいないお茶の好みも予測できる。</li>
+          <li>どのお茶も「その人に合う淹れ方」で比べるので、「このお茶が嫌い」と「うまく淹れられていない」を分けられる。</li>
+          <li>結果は<b>お茶カード</b>（お茶 + 淹れ方 + 理由）。</li>
+        </ul></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>なぜ中国茶か、収録する 7 種</h3>
+      <p>中国茶には緑茶・白茶・黄茶・烏龍茶（青茶）・紅茶・黒茶の六つの分類があり、そこに花茶も加わります。分類ごとに合う湯温や洗茶の有無が大きく違うため、初心者が一人で「どれが好きか」を探すのは難しい対象です。</p>
+      <table class="t" style="margin-top:6px">
+        <tr><th>お茶</th><th>分類</th><th>特徴（モデルでの扱い）</th><th>湯温の目安</th><th>洗茶</th></tr>
+        <tr><td><span class="sw" style="background:#5f8f3a"></span>西湖龍井</td><td>緑茶（釜炒り）</td><td>栗のような香ばしさ・旨み・青み。熱湯だとすぐ渋くなる</td><td>70–90 °C</td><td>なし</td></tr>
+        <tr><td><span class="sw" style="background:#e8d9a8"></span>茉莉花茶</td><td>花茶（緑茶ベース）</td><td>ジャスミンの強い香り</td><td>75–95 °C</td><td>なし</td></tr>
+        <tr><td><span class="sw" style="background:#d9d4c4"></span>白牡丹</td><td>白茶</td><td>干し草と蜜のような甘み、渋みは少なめ</td><td>75–95 °C</td><td>なし</td></tr>
+        <tr><td><span class="sw" style="background:#3f7f6a"></span>鉄観音</td><td>烏龍茶（軽発酵）</td><td>蘭のような花の香り、飲んだ後の回甘</td><td>85–100 °C</td><td>あり</td></tr>
+        <tr><td><span class="sw" style="background:#9a3a2a"></span>大紅袍</td><td>烏龍茶（武夷岩茶）</td><td>しっかりした焙煎香と厚み</td><td>90–100 °C</td><td>あり</td></tr>
+        <tr><td><span class="sw" style="background:#c77a2a"></span>滇紅</td><td>紅茶（雲南）</td><td>蜜のような甘い香り、まろやか</td><td>85–100 °C</td><td>なし</td></tr>
+        <tr><td><span class="sw" style="background:#4a3328"></span>熟普洱</td><td>黒茶</td><td>土や木のような熟成香、とろみ、渋みはほとんどない</td><td>90–100 °C</td><td>あり</td></tr>
+      </table>
+      <p class="note" style="margin:6px 0 0">湯温の目安と洗茶の有無は、一般的な淹れ方を大まかにまとめたものです（産地や等級でかなり違う）。モデルでは「そのお茶でその人向けの淹れ方を探す範囲」として使います。</p>
+    </div>
+  </section>
+
+  <section class="flow">
+    <h2>2. 仕組みの流れ</h2>
+    <svg viewBox="0 0 1200 540" xmlns="http://www.w3.org/2000/svg" font-family="Hiragino Sans, Yu Gothic, Meiryo, sans-serif">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b6168"/></marker>
+        <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4f7a3a"/></marker>
+        <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a5a33"/></marker>
+      </defs>
+      <g font-size="15">
+        <text x="30" y="26" font-size="13" fill="#4f7a3a" font-weight="bold">淹れ方の調整（1 種類のお茶の中で）</text>
+        <rect x="30" y="40" width="170" height="74" rx="12" fill="#fff" stroke="#d6d2c4"/>
+        <text x="115" y="70" text-anchor="middle" font-weight="bold">① 装置が一杯淹れる</text>
+        <text x="115" y="94" text-anchor="middle" font-size="12" fill="#5b6168">計量・洗茶・注湯・抽出</text>
+        <rect x="250" y="40" width="170" height="74" rx="12" fill="#fff" stroke="#d6d2c4"/>
+        <text x="335" y="70" text-anchor="middle" font-weight="bold">② 飲む・評価</text>
+        <text x="335" y="94" text-anchor="middle" font-size="12" fill="#5b6168">もう一杯飲みたい？ 1–7</text>
+        <rect x="470" y="40" width="190" height="74" rx="12" fill="#fff" stroke="#d6d2c4"/>
+        <text x="565" y="70" text-anchor="middle" font-weight="bold">③ 感想を言う</text>
+        <text x="565" y="94" text-anchor="middle" font-size="12" fill="#5b6168">「渋い」「うまく言えない」</text>
+        <rect x="710" y="40" width="200" height="74" rx="12" fill="#fff" stroke="#4f7a3a"/>
+        <text x="810" y="70" text-anchor="middle" font-weight="bold">④ LLM が意味を理解</text>
+        <text x="810" y="94" text-anchor="middle" font-size="12" fill="#5b6168">「直したい知覚」に対応づけ</text>
+        <rect x="960" y="40" width="210" height="74" rx="12" fill="#fff" stroke="#4f7a3a"/>
+        <text x="1065" y="70" text-anchor="middle" font-weight="bold">⑤ モデルが候補を計算</text>
+        <text x="1065" y="94" text-anchor="middle" font-size="12" fill="#5b6168">一つだけ変える案 + 予測効果</text>
+        <line x1="200" y1="77" x2="246" y2="77" stroke="#5b6168" stroke-width="2" marker-end="url(#ar)"/>
+        <line x1="420" y1="77" x2="466" y2="77" stroke="#5b6168" stroke-width="2" marker-end="url(#ar)"/>
+        <line x1="660" y1="77" x2="706" y2="77" stroke="#5b6168" stroke-width="2" marker-end="url(#ar)"/>
+        <line x1="910" y1="77" x2="956" y2="77" stroke="#5b6168" stroke-width="2" marker-end="url(#ar)"/>
+        <rect x="960" y="190" width="210" height="74" rx="12" fill="#f6faf2" stroke="#4f7a3a"/>
+        <text x="1065" y="220" text-anchor="middle" font-weight="bold">⑥ 先に予想してもらう</text>
+        <text x="1065" y="244" text-anchor="middle" font-size="12" fill="#5b6168">「どのつまみを動かす？」</text>
+        <rect x="690" y="190" width="230" height="74" rx="12" fill="#f6faf2" stroke="#4f7a3a"/>
+        <text x="805" y="220" text-anchor="middle" font-weight="bold">⑦ 答え + 説明</text>
+        <text x="805" y="244" text-anchor="middle" font-size="12" fill="#5b6168">LLM は候補から一つ選び、日常の言葉で</text>
+        <rect x="430" y="190" width="220" height="74" rx="12" fill="#fff" stroke="#d6d2c4"/>
+        <text x="540" y="220" text-anchor="middle" font-weight="bold">⑧ 本人が確認</text>
+        <text x="540" y="244" text-anchor="middle" font-size="12" fill="#5b6168">新しい条件を装置へ送る</text>
+        <line x1="1065" y1="114" x2="1065" y2="186" stroke="#4f7a3a" stroke-width="2" marker-end="url(#ar2)"/>
+        <line x1="960" y1="227" x2="924" y2="227" stroke="#4f7a3a" stroke-width="2" marker-end="url(#ar2)"/>
+        <line x1="690" y1="227" x2="654" y2="227" stroke="#4f7a3a" stroke-width="2" marker-end="url(#ar2)"/>
+        <path d="M430,227 L115,227 L115,118" fill="none" stroke="#4f7a3a" stroke-width="2" marker-end="url(#ar2)"/>
+        <text x="300" y="218" text-anchor="middle" font-size="13" fill="#4f7a3a">次の一杯</text>
+        <path d="M335,114 L335,160 L250,160" fill="none" stroke="#2f6f8f" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="300" y="152" font-size="12" fill="#2f6f8f" text-anchor="end">B：自分でスライダーを動かす</text>
+
+        <text x="30" y="312" font-size="13" fill="#8a5a33" font-weight="bold">お茶探し（お茶とお茶の間）</text>
+        <path d="M200,227 L200,262 L155,262 L155,322" fill="none" stroke="#8a5a33" stroke-width="2" marker-end="url(#ar3)"/>
+        <text x="212" y="290" font-size="12" fill="#8a5a33">何杯か調整した、または淹れ方では直らない不満がある</text>
+        <rect x="30" y="326" width="250" height="78" rx="12" fill="#fffaf3" stroke="#8a5a33"/>
+        <text x="155" y="357" text-anchor="middle" font-weight="bold">Ⓐ 好みの推定</text>
+        <text x="155" y="381" text-anchor="middle" font-size="12" fill="#5b6168">すべての杯の評価と不満から</text>
+        <rect x="320" y="326" width="280" height="78" rx="12" fill="#fffaf3" stroke="#8a5a33"/>
+        <text x="460" y="357" text-anchor="middle" font-weight="bold">Ⓑ 各お茶の「あなた向けの淹れ方」</text>
+        <text x="460" y="381" text-anchor="middle" font-size="12" fill="#5b6168">予測される好みで順位づけ、未体験は加点</text>
+        <rect x="640" y="326" width="240" height="78" rx="12" fill="#fffaf3" stroke="#8a5a33"/>
+        <text x="760" y="357" text-anchor="middle" font-weight="bold">Ⓒ 先に予想：次はどれ？</text>
+        <text x="760" y="381" text-anchor="middle" font-size="12" fill="#5b6168">予想してから推薦と理由を見る</text>
+        <rect x="920" y="326" width="250" height="78" rx="12" fill="#fffaf3" stroke="#8a5a33"/>
+        <text x="1045" y="357" text-anchor="middle" font-weight="bold">Ⓓ お茶を替えて一杯目</text>
+        <text x="1045" y="381" text-anchor="middle" font-size="12" fill="#5b6168">モデルが出した淹れ方で淹れる</text>
+        <line x1="280" y1="365" x2="316" y2="365" stroke="#8a5a33" stroke-width="2" marker-end="url(#ar3)"/>
+        <line x1="600" y1="365" x2="636" y2="365" stroke="#8a5a33" stroke-width="2" marker-end="url(#ar3)"/>
+        <line x1="880" y1="365" x2="916" y2="365" stroke="#8a5a33" stroke-width="2" marker-end="url(#ar3)"/>
+        <path d="M1045,404 L1045,428 L14,428 L14,77 L26,77" fill="none" stroke="#8a5a33" stroke-width="2" marker-end="url(#ar3)"/>
+        <text x="560" y="420" text-anchor="middle" font-size="12" fill="#8a5a33">① に戻り、新しいお茶も調整できる。何種類か試すと、お茶カード（お茶 + 淹れ方 + 理由）ができる</text>
+
+        <rect x="30" y="452" width="1140" height="66" rx="12" fill="#fff" stroke="#d6d2c4" stroke-dasharray="5 4"/>
+        <text x="50" y="479" font-size="13.5" font-weight="bold">すべての杯で記録するもの：</text>
+        <text x="50" y="503" font-size="12.5" fill="#5b6168">お茶 · 条件 · 実際の温度曲線 · 評価 · 本人の言葉 · 本人の予想 · コーチの選択 · モデル予測と実際の評価のずれ · 個人辞書 · 好みの推定の変化</text>
+      </g>
+    </svg>
+  </section>
+
+  <section>
+    <h2>3. ハードウェア</h2>
+    <table class="t">
+      <tr><th style="width:15%">機能</th><th style="width:40%">作り方</th><th>説明</th></tr>
+      <tr><td>茶葉の保管（背面）</td><td>遮光・密閉キャニスター ×7。蓋に乾燥剤を入れ、本体背面の棚に一列に並べる</td><td>茶葉は光・湿気・におい移りに弱いです。茉莉花茶は香りが強いので、端に置いて隣と離します。</td></tr>
+      <tr><td>給茶</td><td>各キャニスターの底にスクリューフィーダー（小型ステッピングモーター）→ 共通シュート → 計量カップ</td><td>選んだお茶のフィーダーだけを回します。</td></tr>
+      <tr><td>計量</td><td>計量カップの下に 100 g ロードセル（0.01 g 分解能）+ HX711。目標の重さで止め、カップを傾けて浸出室へ入れる</td><td>龍井は平たく、鉄観音は丸い粒で、白牡丹はかさばります。体積あたりの重さがお茶ごとに違うので、体積ではなく重さで量ります。</td></tr>
+      <tr><td>給水</td><td>浄水フィルター付きの常温タンク + 水位センサー</td><td>水が少なくなったら止まって知らせます。</td></tr>
+      <tr><td>熱湯</td><td>市販の温度調節ケトルまたは瞬間湯沸かし器（空焚き防止付き）で 100 °C を保つ</td><td>AC 100 V の回路は改造しません。装置側は低電圧のポンプと弁だけです。</td></tr>
+      <tr><td>温度合わせ</td><td>冷水・熱湯の 2 系統ペリスタルティックポンプ（耐熱シリコーンチューブ）で比率を変えて注ぐ</td><td>熱湯の比率 ≈ (T − T冷) ÷ (T熱 − T冷)。浸出室の温度で補正します。一杯ずつ沸かすより速いです。</td></tr>
+      <tr><td>温度測定</td><td>DS18B20 ステンレス防水プローブ ×3（冷水・熱湯・浸出室）</td><td>±0.5 °C。カップは冷めていくので、浸出中の温度曲線をすべて記録します。</td></tr>
+      <tr><td>浸出室</td><td>100 ml の二重ガラス + ステンレスのフィルターバスケット</td><td>サーボで反転し、茶殻を出します。</td></tr>
+      <tr><td>三方弁</td><td>浸出室の下。食品用・常閉・耐熱（≥ 100 °C）の電磁弁で「カップへ」と「排水へ」を切り替える</td><td>時間になったらすぐ茶液と茶葉を分けます。「時間」を正確に制御できるのはこの弁があるからです。</td></tr>
+      <tr><td>洗茶</td><td>烏龍茶・黒茶は最初に湯を約 10 秒通し、三方弁で排水へ捨てる</td><td>中国茶でよく行う手順です。モデルでは、最初に出る成分が少し減るものとして扱います。</td></tr>
+      <tr><td>茶殻の排出</td><td>サーボで浸出室を反転させ、茶殻をシュートから茶殻ボックスへ落とす</td><td>茶殻ボックスと排水タンクは前から引き出して洗えます。</td></tr>
+      <tr><td>自動すすぎ</td><td>浸出室の上のノズルから水を噴き、排水へ流す</td><td>お茶を替えるときは 2 回すすぎます。ジャスミンの香りは特に残りやすいです。</td></tr>
+      <tr><td>排水</td><td>排水タンク + 満水センサー + 漏水センサー（トレイの下）</td><td>満水か漏水を検知したら止まります。</td></tr>
+      <tr><td>カップ</td><td>カップの下に 1 kg ロードセル + HX711</td><td>実際に何 ml 出たかを確認します。</td></tr>
+      <tr><td>制御</td><td>ESP32-S3 + ステッピングドライバ TMC2209（フィーダー 7 + ポンプ 2）、MOSFET（弁）、サーボ 2、I/O エキスパンダ、12 V 電源</td><td>画面はタブレットのブラウザで、Wi-Fi で条件を送ります。</td></tr>
+      <tr><td>声</td><td>タブレットのマイク + ブラウザの音声認識、または Whisper で文字にする</td><td>ボタンや文字入力でも操作できます。</td></tr>
+      <tr><td>筐体</td><td>木製の外装（オーク材のパネル + ウォルナット材の台座、食品用の木工オイル仕上げ）、内部フレームは PETG の 3D プリント。浸出室と茶殻ボックスの前に蓋センサー</td><td>湯に触れる部品はガラス・ステンレス・食品用シリコーンだけにし、木は水路に触れさせません。蓋が開いていたら注湯しません。</td></tr>
+    </table>
+    <div class="card" style="margin-top:16px"><h3>一人で作る順番</h3>
+      <ul>
+        <li><b>v1</b>：温度合わせ・浸出室・三方弁・カップのロードセルまで。茶葉は精密スケールで手で量って投入口から入れ、茶殻も手で捨てる。実験はこれで行える。</li>
+        <li><b>v2</b>：背面のキャニスターとフィーダー、計量カップ、反転・すすぎを足して全自動にする。</li>
+      </ul></div>
+  </section>
+
+  <section>
+    <h2>4. ソフトウェア</h2>
+    <div class="grid2">
+      <div class="card"><h3>知覚モデル</h3>
+        <ul>
+          <li>Phase 1：お茶ごとに三つの変数をそれぞれ 3 段階にとり（例：その茶の湯温範囲の 3 点 × 1/3/5 分 × 1/2/3 g）、参加者がその一部を飲んで、各知覚と好みを評価する。</li>
+          <li>知覚ごとに回帰かガウス過程を当てはめ、不確かさも持たせる。お茶の種類も入力に入れる。</li>
+          <li>候補：今の条件から、各変数を一段階上げる・下げるの計 6 案。モデルがそれぞれの効果を予測する。</li>
+          <li>方向は文献と照らし合わせられる。低温でもテアニン（旨み）は出るが、EGCG（強い渋み）とカフェイン（苦み）はずっと出にくい（<a href="https://www.maff.go.jp/j/kanbo/kihyo03/gityo/new_tech_cultivar/2021/2021seika-19.html">農林水産省・水出し緑茶</a>。具体的な数値は原文で要確認。緑茶の結果）。</li>
+          <li>中国茶は同じ茶葉で何煎も淹れるのが普通です（工夫茶）。今回は一煎目だけをモデル化しました。煎ごとに成分が減るモデルを足せば、「何煎目か」もコーチの対象にできます。</li>
+        </ul></div>
+      <div class="card"><h3>コーチ（制約付き LLM）</h3>
+        <ul>
+          <li>LLM の仕事は三つだけです。本人の言葉を理解する、候補から一つ選ぶ、日常の言葉で説明する。</li>
+          <li>出力は候補のどれかの id でなければ捨て、モデルの一位の候補を使う。</li>
+          <li>先に予想する形式では、LLM はまず「どれを動かすと思う？」とだけ聞き、本人が答えてから答えを出す。</li>
+          <li>個人辞書：「喉がイガイガする」のような初めての言葉は、コーチがどの知覚のことか確かめて保存し、次からはそのまま使う。</li>
+          <li>淹れ方ではほとんど直せない不満（龍井の青み、大紅袍の焙煎香など）には、「そのお茶の個性です」と言ってお茶を替えることを勧める。</li>
+        </ul></div>
+      <div class="card new"><h3>お茶探し：好みの推定</h3>
+        <ul>
+          <li>パラメータは 9 個：渋みの許容度、苦みの許容度、好きな濃さ、回甘・旨み・香り・焙煎香・青み・熟成香それぞれの重み。</li>
+          <li>当てはめの目的関数 = 評価の誤差 + 不満の制約（「渋い」と言ったなら、その杯の渋みは本人の許容度を超えている）+ 事前分布（「一般的な初心者」から離れるほど多くの証拠が要る）。</li>
+          <li>実際のシステムではベイズ推定に替えて不確かさを持たせ、「好みをいちばん区別できる」次のお茶を選ぶことにも使える。</li>
+        </ul></div>
+      <div class="card new"><h3>お茶探し：推薦</h3>
+        <ul>
+          <li>お茶ごとに、湯温（その茶の範囲を 5 °C 刻み）× 時間 10 段階 × 茶葉 6 段階をグリッド探索し、推定した好みで点がいちばん高い淹れ方を探す。</li>
+          <li>その最高点でお茶を並べる。まだ飲んでいないお茶は少し加点し、今のお茶は今回の推薦から外す。</li>
+          <li>同点ならカフェインの少ない淹れ方を選ぶ。</li>
+          <li>デモの「模擬の舌」には 6 種類の好みがあります。本当の好みはモデルから隠されていて、評価と不満を通してだけ伝わります。お茶カードの下に本当の順位を出し、モデルの推定と比べられるようにしています。</li>
+        </ul></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>コーチの入力と出力（例）</h3>
+<code class="js">淹れ方   入力 → {"user":"喉がイガイガする","tea":"longjing","cup":{"T":95,"t":240,"r":2.0},
+               "candidates":[{"id":"T-","label":"湯温を 10 °C 下げる","pred":{"渋み":-1.6,"好み":+1.9}}, …]}
+         出力 ← {"intent":{"dim":"渋み","dir":-1},"choice":"T-","say":"イガイガはたぶん渋みです。渋みのもとのカテキンは湯温にいちばん敏感で……"}
+
+お茶探し 入力 → {"profile":{"渋みが苦手":-0.6,"香り重視":+0.7},"tried":["longjing"],
+               "ranking":[{"tea":"tieguanyin","brew":{"T":90,"t":90,"r":3.0},"pred":5.8}, …]}
+         出力 ← {"choice":"tieguanyin","say":"渋みが苦手で香りを大事にするなら、鉄観音です。発酵で渋みのもとが減り、花の香りが強く……"}</code>
+    </div>
+  </section>
+
+  <section>
+    <h2>5. 実験</h2>
+    <div class="grid2">
+      <div class="card"><h3>淹れ方：B vs C1 vs C2</h3>
+        <ul>
+          <li>参加者：普段お茶をあまり飲まない 12–16 人。参加者内計画で、順序はカウンターバランスする。</li>
+          <li>課題：6 杯以内に「もう一杯飲みたい」（6 点以上）の一杯を淹れる。</li>
+          <li>条件：B 直接操作 / C1 コーチがすぐ教える / C2 コーチが先に予想させる。</li>
+          <li>最後の一回は全員コーチなし（転移テスト）。</li>
+          <li>測るもの：到達までの杯数と最終的な好み、方向の問題（「湯温を上げると渋くなる？薄くなる？」）、コーチなしの課題でかかった杯数、操作感、信頼感。Gajos &amp; Mamykina の結果から、転移では C2 &gt; C1 を予想する。</li>
+        </ul></div>
+      <div class="card new"><h3>お茶探し</h3>
+        <ul>
+          <li>比較条件：パッケージの標準的な淹れ方で順に試す / 好みアンケートで推薦 / 本システム。</li>
+          <li>測るもの：何杯目で 6 点以上のお茶に出会ったか、お茶カードの一位が本人の最終的な一番と一致するか。</li>
+          <li>1–2 週間後の再訪：家でお茶カードどおりに一回淹れてもらい、まだ好きか、なぜ好きかを説明できるかを見る。</li>
+          <li>初心者の好みは飲む回数で変わるので、その場の評価より再訪のほうが多くのことがわかる。</li>
+        </ul></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>6. 安全</h2>
+    <div class="card"><ul>
+      <li><b>カフェイン</b>：湯温が高い、時間が長い、茶葉が多いほど増えます。試すお茶が多いほど杯数も増えます。50 ml の小さなカップを使い、一口含んで味わったら吐き出してよいことにし（官能評価でよく使うやり方）、何回かに分けて行います。パネルには一杯ごとと累計の推定値をモデルから出しますが、桁の目安にすぎません。</li>
+      <li><b>お茶の種類とカフェイン</b>：「白茶や黒茶はカフェインが少ない」という話をよく聞きますが、裏づけになる一次データは確認できていません。お茶の種類で選ぶより、湯温を低めに、時間を短く、カップを小さくするほうが確実に量を抑えられます。</li>
+      <li><b>参加者</b>：カフェインに敏感でないこと、妊娠していないことを募集時に確認します。</li>
+      <li><b>やけど</b>：100 °C の湯を使います。湯沸かしは市販品を使い、配管にカバーを付け、蓋が開いていたら注湯しません。</li>
+      <li><b>衛生</b>：湯に触れるのはガラス・ステンレス・食品用シリコーンだけです。一杯ごとに自動ですすぎ、茶殻ボックスと排水タンクは毎日空にして洗います（カビ対策）。</li>
+      <li><b>倫理</b>：試飲は人を対象とする実験にあたるので、学内の倫理審査を先に受けます。</li>
+    </ul></div>
+  </section>
+</div>
+
+<footer><div style="margin-bottom:6px">wenxi · 2026</div>コンセプトのイメージです。パネルの「試飲結果」は、おもちゃモデルと「模擬の舌」で人の代わりをしています。モデルの係数と 6 種類の好みは作り話で、方向が常識と合うことだけを保証しています。お茶ごとの違いもイメージです。実際のシステムでは人が飲み、モデルは Phase 1 のデータで当てはめます。LLM の理解は、ここではキーワードの照合で代用しています。</footer>
+
+<script src="three.min.js"></script>
+<script src="brew-model.js"></script>
+<script>
+(function(){
+  'use strict';
+  const TM = window.TeaModel;
+  const CUP_ML = 50;
+  const START = {T:95,t:240,r:2};
+  const PHASES = ['① 投茶・計量','② 洗茶（湯を通して捨てる）','③ 注湯・温度合わせ','④ 浸出','⑤ 抽出・カップへ','⑥ 茶殻の排出・すすぎ'];
+  const PH_BASE = [3,2.2,3,4.5,3,3.2];
+  const DIMCOL = {ast:'#7a8f3a',bit:'#6b4f2a',umami:'#d08a2e',sweet:'#c25b7a',body:'#8a6a12',aroma:'#4f8f8a',roast:'#8a5a33',grass:'#5a9a3a',earthy:'#5a4636'};
+  const QUICK = ['渋い','苦い','薄い','濃すぎる','甘みが足りない','香りが弱い','焦げっぽい','土っぽい','草みたいな味',TM.VAGUE_SAY];
+  const clamp01 = x=>Math.max(0,Math.min(1,x));
+
+  // ---------------------------------------------------------------- state
+  const S = {
+    mode:'C', style:'guess', persona:'shy', tea:'longjing', p:Object.assign({},START), stage:'idle', speed:1,
+    phase:-1, phaseT:0, brewP:null, brewTea:'longjing', cups:[], tried:[], dumpInit:false, dumped:0, rinses:0,
+    intent:null, said:'', cands:[], choice:null, guessId:null, cantFix:false,
+    prof:Object.assign({},TM.PRIOR), recs:[], pickChoice:null, teaGuess:null,
+    stats:{n:0,ok:0}, tstats:{n:0,ok:0}, lexicon:{}, caffeine:0
+  };
+  const persona = ()=>TM.PERSONAS.find(x=>x.id===S.persona)||TM.PERSONAS[0];
+  const teaName = id=>TM.TEAS[id].name;
+  const phDur = i=>(i===1&&!TM.TEAS[S.brewTea].rinse)?0:PH_BASE[i];
+
+  // ---------------------------------------------------------------- three
+  const viewer = document.getElementById('viewer');
+  const renderer = new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  viewer.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1c1b1a);
+  const camera = new THREE.PerspectiveCamera(38,1,0.1,200);
+  scene.add(new THREE.HemisphereLight(0xfff4e6,0x5a4a3a,0.95));
+  const dl = new THREE.DirectionalLight(0xffffff,0.8); dl.position.set(6,12,8); scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff,0.3); dl2.position.set(-8,5,-6); scene.add(dl2);
+
+  const M = (c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.55,metalness:.05},o));
+  const glassM = ()=>M(0xffffff,{transparent:true,opacity:.28,roughness:.08,depthWrite:false,side:THREE.DoubleSide});
+  function woodTex(base,line,rep){const c=document.createElement('canvas');c.width=256;c.height=256;const x=c.getContext('2d');x.fillStyle=base;x.fillRect(0,0,256,256);
+    for(let i=0;i<64;i++){const y0=i*4+Math.random()*4;x.strokeStyle=line;x.globalAlpha=0.06+Math.random()*0.2;x.lineWidth=0.6+Math.random()*1.6;x.beginPath();
+      for(let u=0;u<=256;u+=8){const y=y0+5*Math.sin(u/45+i*0.7)+2*Math.sin(u/11+i*1.3);if(u)x.lineTo(u,y);else x.moveTo(u,y);}x.stroke();}
+    x.globalAlpha=1;const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep[0],rep[1]);return t;}
+  // 木の筐体：明るいオーク + 濃いウォルナット、金具は真鍮
+  const shell = M(0xffffff,{map:woodTex('#c8935f','#6a3f1f',[2,1]),roughness:.62}), walnut = M(0xffffff,{map:woodTex('#6a4128','#24130a',[3,1]),roughness:.55});
+  const dark = M(0x2a211b,{roughness:.45}), steel = M(0xc9ccd1,{metalness:.6,roughness:.3}), brass = M(0xc29a5b,{metalness:.75,roughness:.32});
+  function add(m,x,y,z,parent){m.position.set(x,y,z);(parent||scene).add(m);return m;}
+  function box(w,h,d,mat,x,y,z,parent){return add(new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat),x,y,z,parent);}
+  function cyl(rt,rb,h,mat,x,y,z,seg=32,open=false,parent){return add(new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg,1,open),mat),x,y,z,parent);}
+  function edges(mesh,color=0x4a2e18){const e=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry),new THREE.LineBasicMaterial({color,transparent:true,opacity:.7}));e.position.copy(mesh.position);e.rotation.copy(mesh.rotation);(mesh.parent||scene).add(e);return e;}
+  const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+  const curve = pts=>new THREE.CatmullRomCurve3(pts.map(p=>V(...p)));
+  const tubeMat = M(0xffffff,{transparent:true,opacity:.55});
+  function tube(pts,r=0.035,mat=tubeMat){const c=curve(pts);scene.add(new THREE.Mesh(new THREE.TubeGeometry(c,40,r,8,false),mat));return c;}
+
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(17,64),M(0x34302c,{roughness:.85}));
+  ground.rotation.x=-Math.PI/2; ground.position.y=-0.01; scene.add(ground);
+
+  // body
+  edges(box(10.4,0.4,4.4,walnut,0,0.2,0.1),0x24130a);
+  edges(box(7,3.8,1.4,shell,0,2.3,-1.4));
+  const head = box(7,1.4,4.2,M(0xd8e4ea,{transparent:true,opacity:.22,roughness:.1,depthWrite:false}),0,4.9,0); edges(head,0x4b5563);
+  box(7,0.08,4.2,walnut,0,5.64,0);
+  box(2.0,1.2,0.06,M(0x1f7a4d),0,2.7,-0.68);
+  for(let i=0;i<4;i++) box(0.25,0.18,0.06,dark,-0.6+i*0.4,2.9,-0.63);
+  const CX=0, CZ=1.0;
+  box(1.3,0.1,0.32,steel,CX,0.42,CZ);
+  box(3.0,0.06,2.0,M(0x9aa3ad,{metalness:.5,roughness:.4}),CX,0.5,CZ);
+
+  // cold water tank (left) and kettle (right)
+  const tank = box(1.4,3.0,1.4,glassM(),-4.3,1.9,-0.5); edges(tank,0x8aa0ad);
+  const tankWater = box(1.28,2.6,1.28,M(0x9fd3ff,{transparent:true,opacity:.5,depthWrite:false}),-4.3,1.72,-0.5);
+  box(0.9,0.35,0.9,M(0x8fb3c9,{roughness:.6}),-4.3,3.25,-0.5);   // filter cartridge
+  box(0.08,0.4,0.08,dark,-3.58,0.9,-0.5);                           // level sensor
+  cyl(0.65,0.65,2.2,steel,4.3,1.5,-0.5);
+  const hotRing = cyl(0.67,0.67,0.18,M(0x333333,{emissive:new THREE.Color(0xff4422),emissiveIntensity:0}),4.3,0.55,-0.5);
+  box(0.2,1.2,0.25,dark,5.05,1.7,-0.5);
+  cyl(0.2,0.2,0.2,dark,4.3,2.7,-0.5);
+
+  // pumps
+  const pumpC = cyl(0.26,0.26,0.3,M(0x7aa7d6,{metalness:.3}),-1.2,4.6,-0.9); pumpC.rotation.z=Math.PI/2;
+  const pumpH = cyl(0.26,0.26,0.3,M(0xd67a6a,{metalness:.3}),1.2,4.6,-0.9); pumpH.rotation.z=Math.PI/2;
+  const rotC = box(0.06,0.42,0.06,dark,-1.04,4.6,-0.9), rotH = box(0.06,0.42,0.06,dark,1.36,4.6,-0.9);
+  const tubeCold = tube([[-4.3,3.42,-0.5],[-3.2,4.3,-0.8],[-1.2,4.6,-0.9],[-0.2,4.5,0.2],[0.3,4.32,CZ-0.05]]);
+  const tubeHot  = tube([[4.3,2.62,-0.5],[3.2,4.3,-0.8],[1.2,4.6,-0.9],[0.6,4.5,0.2],[0.32,4.32,CZ+0.05]]);
+
+  // tea canisters ×7 on the rear shelf, each with a screw feeder and a chute to the dosing cup
+  box(7.4,0.1,1.3,walnut,0,5.68,-1.4);
+  const CAN_Y=5.73, CANS={};
+  const leafMat = M(0x3f6b2a,{roughness:.8}), leafMat2 = M(0x5a7f2f,{roughness:.8});
+  const chuteMat = M(0xffffff,{transparent:true,opacity:.35,depthWrite:false});
+  TM.TEA_IDS.forEach((id,i)=>{
+    const T=TM.TEAS[id], x=-3+i, g=new THREE.Group(); g.position.set(x,CAN_Y,-1.4); scene.add(g);
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.36,1.0,28),M(0xeee9dd,{metalness:.25,roughness:.4})); body.position.y=0.5; g.add(body);
+    const band=new THREE.Mesh(new THREE.CylinderGeometry(0.366,0.366,0.42,28),M(T.can,{emissive:new THREE.Color(T.can),emissiveIntensity:0})); band.position.y=0.52; g.add(band);
+    const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.375,0.375,0.12,28),brass); lid.position.y=1.05; g.add(lid);
+    const fd = box(0.32,0.16,0.32,dark,x,5.48,-1.4);
+    const ch = tube([[x,5.36,-1.4],[x*0.7,5.25,-0.9],[x*0.25,5.08,0.2],[0,4.92,CZ]],0.05,chuteMat);
+    CANS[id]={g,band,fd,chute:ch,x};
+  });
+
+  // dosing cup on a micro load cell
+  const dc = new THREE.Group(); dc.position.set(CX,4.62,CZ); scene.add(dc);
+  const dcCup = new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.2,0.26,24,1,true),glassM()); dcCup.position.y=0.13; dc.add(dcCup);
+  box(0.42,0.06,0.3,steel,CX+0.42,4.6,CZ);
+  box(0.12,0.12,0.12,dark,CX+0.6,4.66,CZ);
+
+  // extraction chamber (tilts to dump leaves), spray nozzle, 3-way valve
+  const chCenter = V(CX,3.6,CZ);
+  const chamberG = new THREE.Group(); chamberG.position.copy(chCenter); scene.add(chamberG);
+  const chamber = cyl(0.56,0.52,1.2,glassM(),0,0,0,40,true,chamberG); edges(chamber,0x8aa0ad);
+  cyl(0.53,0.53,0.03,M(0xb9bec4,{metalness:.7,roughness:.35,transparent:true,opacity:.85}),0,-0.54,0,40,false,chamberG);
+  cyl(0.52,0.2,0.18,steel,0,-0.65,0,32,false,chamberG);
+  cyl(0.03,0.03,1.15,steel,0.3,0.18,-0.2,10,false,chamberG);
+  cyl(0.07,0.07,0.12,dark,0.3,0.74,-0.2,12,false,chamberG);
+  const chLiq = cyl(0.5,0.47,1.0,M(0xdde9ee,{transparent:true,opacity:.75,depthWrite:false}),0,-0.52,0,40,false,chamberG);
+  chLiq.geometry.translate(0,0.5,0); chLiq.scale.y=0.001;
+  box(0.4,0.12,0.3,dark,-0.95,3.6,CZ-0.2);       // tilt servo
+  cyl(0.06,0.06,0.3,steel,-0.62,3.6,CZ-0.2,12).rotation.z=Math.PI/2;
+  const nozzle = cyl(0.05,0.08,0.18,steel,CX-0.45,4.36,CZ,12); nozzle.rotation.z=-0.5;
+  box(0.36,0.2,0.3,dark,CX,2.78,CZ);
+  const valveLed = cyl(0.04,0.04,0.02,M(0x333333,{emissive:new THREE.Color(0x33ff66),emissiveIntensity:0}),CX+0.19,2.8,CZ+0.15,10); valveLed.rotation.x=Math.PI/2;
+  cyl(0.05,0.03,0.18,steel,CX,2.6,CZ,12);
+  const stream = cyl(0.035,0.035,1.0,M(0xc9a64a,{transparent:true,opacity:.8}),CX,2.0,CZ,10);
+  stream.visible=false;
+
+  // waste tank (left) and spent-leaf box (right)
+  const wasteTube = tube([[CX-0.15,2.74,CZ],[-0.8,2.3,CZ+0.15],[-2.0,1.5,1.2]]);
+  const waste = box(1.0,1.0,1.0,glassM(),-2.0,0.95,1.2); edges(waste,0x8aa0ad);
+  const wasteW = box(0.9,1,0.9,M(0xc9b36a,{transparent:true,opacity:.55,depthWrite:false}),-2.0,0.47,1.2);
+  wasteW.geometry.translate(0,0.5,0); wasteW.scale.y=0.05;
+  const leafChute = tube([[0.75,3.25,CZ],[1.4,2.4,CZ+0.1],[2.0,1.5,1.2]],0.1,chuteMat);
+  const bin = box(1.0,0.9,1.0,M(0x3a3f46,{transparent:true,opacity:.35,depthWrite:false}),2.0,0.95,1.2); edges(bin,0x4b5563);
+  const pile = cyl(0.38,0.42,1,M(0x3a2a1a,{roughness:.9}),2.0,0.5,1.2,20);
+  pile.geometry.translate(0,0.5,0); pile.scale.y=0.001;
+  const sprayC = curve([[CX-0.45,4.3,CZ],[CX-0.1,3.8,CZ],[CX+0.2,3.3,CZ]]);
+
+  const dose=[]; for(let i=0;i<40;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.015,0.05),i%2?leafMat:leafMat2);l.visible=false;scene.add(l);
+    dose.push({m:l,a:Math.random()*Math.PI*2,r:0.08+Math.random()*0.36,yb:3.1+Math.random()*0.08,delay:Math.random(),sp:0.6+Math.random()*0.8,ph:Math.random()*6,loc:V(0,0,0)});}
+
+  // cup
+  const cup = new THREE.Group(); scene.add(cup); cup.position.set(CX,0.53,CZ);
+  const cupG = new THREE.Mesh(new THREE.CylinderGeometry(0.46,0.38,1.0,36,1,true),glassM()); cupG.position.y=0.5; cup.add(cupG);
+  const cupB = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,0.05,36),M(0xffffff,{transparent:true,opacity:.4})); cupB.position.y=0.025; cup.add(cupB);
+  const cupLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.43,0.37,1,36),M(0xc9a64a,{transparent:true,opacity:.85}));
+  cupLiq.geometry.translate(0,0.5,0); cupLiq.position.y=0.05; cupLiq.scale.y=0.001; cup.add(cupLiq);
+  const steam=[]; for(let i=0;i<14;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.07,10,10),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}));scene.add(s);steam.push({m:s,u:Math.random(),x:(Math.random()-.5)*0.4,z:(Math.random()-.5)*0.4});}
+
+  // screen with live text + mic
+  const scan=document.createElement('canvas'); scan.width=256; scan.height=128; const sx=scan.getContext('2d');
+  const stex=new THREE.CanvasTexture(scan);
+  const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.8),new THREE.MeshBasicMaterial({map:stex}));
+  box(1.72,0.92,0.05,dark,-2.2,4.9,2.1); scr.position.set(-2.2,4.9,2.13); scene.add(scr);
+  function drawScreen(){sx.fillStyle='#17324a';sx.fillRect(0,0,256,128);sx.fillStyle='#e8f1f6';sx.font='bold 26px sans-serif';
+    const p=S.stage==='brewing'?S.brewP:S.p; sx.fillText(p.T+'°C  '+p.t+'s  '+(+p.r).toFixed(1)+'g',14,48);
+    sx.font='20px sans-serif';sx.fillStyle='#9ec3d9';sx.fillText(teaName(S.stage==='brewing'?S.brewTea:S.tea)+' · '+S.cups.length+' 杯目 · '+S.mode,14,92);stex.needsUpdate=true;}
+  const mic = cyl(0.16,0.16,0.08,dark,2.2,4.9,2.12,24); mic.rotation.x=Math.PI/2;
+  const micRing = cyl(0.22,0.22,0.02,M(0x333333,{emissive:new THREE.Color(0x4f9a3a),emissiveIntensity:0}),2.2,4.9,2.11,24); micRing.rotation.x=Math.PI/2;
+
+  // droplets
+  const drops=[]; for(let i=0;i<60;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.055,10,10),M(0xffffff));s.visible=false;scene.add(s);drops.push({m:s,c:null,u:0,on:false});}
+  function spawn(c,hex){const d=drops.find(x=>!x.on); if(!d) return; d.c=c; d.u=0; d.on=true; d.m.visible=true; d.m.material.color.setHex(hex);}
+
+  // labels. ph: 0–5 brewing phases, 6 tasting / coach, 7 choosing a tea
+  const LBL=[
+    {t:'常温タンク（浄水フィルター・水位センサー）',p:[-4.3,3.75,-0.5],ph:[2]},
+    {t:'熱湯（市販の温度調節ケトル）',p:[4.3,3.0,-0.5],ph:[1,2]},
+    {t:'スクリューフィーダー ×7',p:[4.1,5.48,-1.4],ph:[0]},
+    {t:'計量カップ + ロードセル',p:[CX+1.25,4.95,CZ],ph:[0]},
+    {t:'冷 / 熱 2 系統ポンプ',p:[0,5.05,-0.9],ph:[1,2]},
+    {t:'すすぎノズル',p:[CX-1.05,4.5,CZ],ph:[5]},
+    {t:'浸出室（ガラス + フィルター）',p:[CX-1.7,3.3,CZ],ph:[3]},
+    {t:'三方弁：カップへ / 排水へ',p:[CX+1.45,2.85,CZ],ph:[1,4,5]},
+    {t:'試飲カップ 50 ml',p:[CX-0.95,1.45,CZ+0.3],ph:[4,6]},
+    {t:'排水タンク',p:[-2.0,1.75,1.2],ph:[1,5]},
+    {t:'茶殻ボックス',p:[2.0,1.75,1.2],ph:[5]},
+    {t:'ロードセル（カップ）',p:[CX+1.2,0.62,CZ+0.7],ph:[4]},
+    {t:'画面',p:[-2.2,5.5,2.1],ph:[]},
+    {t:'マイク：コーチに話す',p:[2.2,5.3,2.1],ph:[6]},
+    {t:'制御基板 ESP32-S3',p:[0,3.5,-0.65],ph:[]}
+  ].concat(TM.TEA_IDS.map(id=>({t:teaName(id),p:[CANS[id].x,7.05,-1.4],ph:[0,7],tea:id})))
+   .map(o=>{const e=document.createElement('div');e.className='lbl'+(o.tea?' teaL':'');e.textContent=o.t;viewer.appendChild(e);o.el=e;o.v=V(...o.p);o.y0=o.p[1];return o;});
+
+  // camera
+  let theta=0.55, phi=1.02, radius=20; const target=V(0,3.4,0.2);
+  function updCam(){camera.position.set(target.x+radius*Math.sin(phi)*Math.sin(theta),target.y+radius*Math.cos(phi),target.z+radius*Math.sin(phi)*Math.cos(theta));camera.lookAt(target);}
+  let drag=false,lx=0,ly=0;
+  viewer.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;if(viewer.setPointerCapture)viewer.setPointerCapture(e.pointerId);});
+  viewer.addEventListener('pointerup',()=>drag=false);
+  viewer.addEventListener('pointermove',e=>{if(!drag)return;theta-=(e.clientX-lx)*0.008;phi=Math.min(1.5,Math.max(0.35,phi-(e.clientY-ly)*0.006));lx=e.clientX;ly=e.clientY;});
+  viewer.addEventListener('wheel',e=>{e.preventDefault();radius=Math.min(34,Math.max(8,radius+e.deltaY*0.01));},{passive:false});
+  function resize(){const w=viewer.clientWidth||800,h=viewer.clientHeight||760;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();}
+  window.addEventListener('resize',resize);
+  function applyTeaLook(){const c=new THREE.Color(TM.TEAS[S.stage==='brewing'?S.brewTea:S.tea].leaf);leafMat.color.copy(c);leafMat2.color.copy(c).offsetHSL(0,0,0.08);}
+
+  // ---------------------------------------------------------------- logic
+  const fmt = (k,v)=>k==='T'?v+' °C':k==='t'?TM.tLabel(v):(+v).toFixed(1)+' g/100ml';
+  const brewStr = p=>p.T+' °C · '+TM.tLabel(p.t)+' · '+(+p.r).toFixed(1)+' g';
+  const f1 = x=>(x>=0?'+':'−')+Math.abs(x).toFixed(1);
+  const esc = s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const lastCup = ()=>S.cups[S.cups.length-1];
+  const refit = ()=>{ S.prof=TM.fitProfile(S.cups); };
+  const isVagueSay = s=>s===TM.VAGUE_SAY||s==='うまく言えない';
+
+  function brew(){
+    if(S.stage==='brewing') return;
+    S.brewP=Object.assign({},S.p); S.brewTea=S.tea; S.stage='brewing'; S.phase=0; S.phaseT=0; S.dumpInit=false;
+    resetAnim(); render();
+  }
+  function finishBrew(){
+    const tea=S.brewTea, pr=TM.predict(S.brewP,tea), truth=TM.predict(S.brewP,tea,persona().prof);
+    const caf=pr.caffeine*CUP_ML/100; S.caffeine+=caf; S.dumped++;
+    S.cups.push({p:Object.assign({},S.brewP),tea,pr,trueLike:truth.like,rating:Math.max(1,Math.min(7,Math.round(truth.like))),caf,mode:S.mode,coach:null,guess:null,intent:null,said:''});
+    if(S.tried.indexOf(tea)<0) S.tried.push(tea);
+    S.stage='taste'; S.phase=6; S.intent=null; S.choice=null; S.guessId=null; S.said=''; S.cantFix=false;
+    refit(); render();
+  }
+  function lookup(text){
+    const s=String(text||'').trim();
+    for(const w in S.lexicon) if(s.indexOf(w)>=0) return Object.assign({},S.lexicon[w],{fromLex:w});
+    return TM.parseIntent(s);
+  }
+  function speakForMe(){
+    const c=lastCup(); if(!c) return '';
+    return TM.complain(TM.predict(c.p,c.tea,persona().prof),persona().prof);
+  }
+  function submitFeedback(text){
+    if(S.stage!=='taste'||S.mode!=='C') return;
+    const last=lastCup();
+    S.said=String(text||'').trim()||'うまく言えない';
+    S.intent=isVagueSay(S.said)?TM.parseIntent(''):lookup(S.said); last.intent=S.intent; last.said=S.said;
+    S.p=Object.assign({},last.p); S.tea=last.tea;
+    refit();
+    S.cands=TM.candidates(S.p,S.intent,S.tea,S.prof).filter(c=>!c.disabled);
+    S.cantFix=TM.cantFix(S.tea,S.intent);
+    S.choice=S.cands[0]; S.guessId=null;
+    S.stage = S.style==='guess' ? 'ask' : 'reveal';
+    render();
+  }
+  function guess(id){
+    if(S.stage!=='ask') return;
+    S.guessId=id; const v=TM.judgeGuess(id,S.choice.id);
+    S.stats.n++; if(v.ok) S.stats.ok++;
+    const last=lastCup(); if(last) last.guess=v.kind;
+    S.stage='reveal'; render();
+  }
+  function confirmCoach(){
+    if(S.stage!=='reveal'||!S.choice) return;
+    const last=lastCup(); if(last) last.coach=S.choice.label;
+    S.p=Object.assign({},S.choice.q); brew();
+  }
+  function saveWord(){
+    if(!S.intent||!S.intent.vague||isVagueSay(S.said)) return;
+    const dg=TM.diagnose(lastCup().pr,S.prof); if(!dg) return;
+    const d=TM.DIAG[dg];
+    S.lexicon[S.said]={dim:d.dim,dir:d.dir,label:d.label,vague:false};
+    render();
+  }
+  // ---- お茶探し
+  function openPick(){
+    if(S.stage==='brewing'||!S.cups.length||S.mode!=='C') return;
+    refit();
+    S.recs=TM.recommend(S.prof,S.tried,S.tea); S.pickChoice=S.recs.find(x=>!x.cur)||S.recs[0]; S.teaGuess=null;
+    S.stage = S.style==='guess' ? 'pick' : 'pickReveal';
+    render();
+  }
+  function guessTea(id){
+    if(S.stage!=='pick') return;
+    S.teaGuess=id; S.tstats.n++; if(id===S.pickChoice.id) S.tstats.ok++;
+    S.stage='pickReveal'; render();
+  }
+  function chooseTea(id){
+    if(S.stage!=='pickReveal') return;
+    const r=S.recs.find(x=>x.id===id)||S.pickChoice;
+    const last=lastCup(); if(last){ last.coach=r.name+'に替える'; last.guess=S.teaGuess?(S.teaGuess===S.pickChoice.id?'right':'other'):null; }
+    S.tea=r.id; S.p=Object.assign({},r.bb.p); brew();
+  }
+  function backToTaste(){ if(['pick','pickReveal','ask','reveal'].indexOf(S.stage)>=0){ S.stage='taste'; render(); } }
+  function reset(){ if(S.stage==='brewing') return; S.p=Object.assign({},START); S.tea='longjing'; S.cups=[]; S.tried=[]; S.stage='idle'; S.phase=-1; S.caffeine=0; S.dumped=0; S.rinses=0;
+    S.stats={n:0,ok:0}; S.tstats={n:0,ok:0}; S.brewP=null; S.prof=Object.assign({},TM.PRIOR); S.lexicon={}; resetAnim(); dose.forEach(d=>d.m.visible=false); render(); }
+  function setMode(m){ if(S.stage==='brewing') return; S.mode=m; if(S.stage!=='idle'&&S.stage!=='taste') S.stage='taste'; render(); }
+  function setStyle(s){ if(S.stage==='brewing') return; S.style=s; if(S.stage!=='idle'&&S.stage!=='taste') S.stage='taste'; render(); }
+  function setPersona(id){ if(S.stage==='brewing') return; S.persona=id; reset(); }
+  function setTea(id){ if(S.stage==='brewing'||!TM.TEAS[id]) return; S.tea=id; render(); }
+  function toggleSpeed(){ S.speed = S.speed===1?3:1; const b=document.getElementById('speed'); if(b) b.textContent='速度 ×'+S.speed; }
+
+  // ---------------------------------------------------------------- panel
+  const panel=document.getElementById('panel');
+  function bars(pr){
+    return TM.DIMS.map(([k,n])=>`<div class="bar"><span>${n}</span><i><span style="width:${(pr[k]*10).toFixed(0)}%;background:${DIMCOL[k]}"></span></i><em>${pr[k].toFixed(1)}</em></div>`).join('');
+  }
+  function paramRows(editable){
+    return ['T','t','r'].map(k=>{const v=TM.VARS[k];
+      return `<div class="prow"><span>${v.name}</span>${editable?`<input type="range" data-k="${k}" min="${v.min}" max="${v.max}" step="${k==='T'?5:v.step}" value="${S.p[k]}">`:`<i></i>`}<b>${fmt(k,S.p[k])}</b></div>`;}).join('');
+  }
+  function traitsHtml(){
+    const tr=TM.profileTraits(S.prof);
+    return tr.length ? tr.map(t=>`<span class="trait">${esc(t.text)}</span>`).join('') : '<span class="note">一般的な初心者とほぼ同じで、まだはっきりした好みは見えていません</span>';
+  }
+  function coachBlock(){
+    const c=S.choice, it=S.intent; if(!c) return '';
+    let h=`<div class="coach"><h4>コーチ · 淹れ方</h4>`;
+    h+=`<div>あなたの言葉：「${esc(S.said)}」→ <b>${esc(it.label)}</b> と理解${it.fromLex?`（あなたの辞書「${esc(it.fromLex)}」より）`:''}</div>`;
+    if(S.stage==='ask'){
+      h+=`<div style="margin-top:6px">先に予想してください：これを直すには<b>どのつまみを、どちらに</b>動かせばいい？</div><div class="guess">`;
+      TM.ACTS.forEach(a=>{const id=TM.actId(a);const dis=S.cands.every(x=>x.id!==id);h+=`<button data-g="${id}" ${dis?'disabled':''}>${TM.actLabel(a)}</button>`;});
+      h+=`</div><p class="note" style="margin:6px 0 0">まちがえても大丈夫です。予想してから答えを見るほうが、先に答えを見るより記憶に残りやすいと言われています（Gajos &amp; Mamykina 2022）。</p></div>`;
+      return h;
+    }
+    const ex=TM.explain(c,it,S.p,S.tea,S.prof);
+    if(S.guessId){const v=TM.judgeGuess(S.guessId,c.id);
+      h+=`<div class="verdict ${v.ok?'ok':'no'}">${v.ok?'正解です。':v.kind==='direction'?'つまみは正解で、向きが逆でした。':'今回コーチが選んだのは別のつまみです。'}</div>`;}
+    if(S.cantFix) h+=`<div class="verdict no">モデルによると、「${esc(TM.DIM_NAME[it.dim])}」は${esc(teaName(S.tea))}そのものの個性です。お茶の味がする淹れ方のままでは抑えきれません。下の変え方で少し弱くはなりますが、お茶を替えるほうが早いです。</div>`;
+    if(ex.lead) h+=`<div style="margin-top:4px">${esc(ex.lead)}</div>`;
+    h+=`<div style="margin-top:6px">提案：<b>${esc(c.label)}</b>。${esc(ex.why)}</div>`;
+    h+=`<div class="note" style="margin:4px 0 6px">モデルの予測：${esc(ex.effect)}</div>`;
+    h+=`<table class="mini"><tr><th>候補（一度に一つだけ）</th><th>${esc(TM.DIM_NAME[it.dim])}</th><th>好み</th></tr>`;
+    S.cands.slice(0,4).forEach(x=>{h+=`<tr class="${x.id===c.id?'sel':''}"><td>${esc(x.label)}</td><td>${f1(x.dT)}</td><td>${f1(x.dLike)}</td></tr>`;});
+    h+=`</table><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="go" id="confirm">確認して淹れる</button>`;
+    if(S.cantFix) h+=`<button class="tea" id="topick2">お茶を替える →</button>`;
+    if(it.vague&&!isVagueSay(S.said)&&TM.diagnose(lastCup().pr,S.prof)) h+=`<button id="saveword">これからは「${esc(S.said)}」をこの意味として覚えて</button>`;
+    h+=`<button id="back">今は変えない</button></div></div>`;
+    return h;
+  }
+  function bestRatingOf(id){ let b=null; S.cups.forEach(c=>{ if(c.tea===id&&(b===null||c.rating>b)) b=c.rating; }); return b; }
+  function pickBlock(){
+    let h=`<div class="coach teaC"><h4>コーチ · お茶を替える</h4>`;
+    h+=`<div>この ${S.cups.length} 杯の評価と発言から、モデルはいまあなたをこう見ています：</div><div style="margin:4px 0">${traitsHtml()}</div>`;
+    if(S.stage==='pick'){
+      h+=`<div style="margin-top:6px">先に予想してください：この好みなら、<b>次はどれを試すべき？</b></div><div class="guess">`;
+      TM.TEA_IDS.filter(id=>id!==S.tea).forEach(id=>{const T=TM.TEAS[id];h+=`<button data-tg="${id}">${esc(T.name)}${S.tried.indexOf(id)>=0?'（飲んだ）':''}<small>${esc(T.cat)}：${esc(T.note)}</small></button>`;});
+      h+=`</div><p class="note" style="margin:6px 0 0">上の推定を見て、自分で考えてから答えを見てください。</p><div style="margin-top:6px"><button id="back">替えずに、このお茶の調整を続ける</button></div></div>`;
+      return h;
+    }
+    const r=S.pickChoice;
+    if(S.teaGuess) h+=`<div class="verdict ${S.teaGuess===r.id?'ok':'no'}">${S.teaGuess===r.id?'正解です。':'あなたの予想は'+esc(teaName(S.teaGuess))+'、モデルのおすすめは'+esc(r.name)+'でした。下の表で予測点の差を見られます。'}</div>`;
+    const curR=S.recs.find(x=>x.cur), topLike=Math.max.apply(null,S.recs.map(x=>x.like));
+    if(curR&&curR.like>=topLike-0.05) h+=`<div class="verdict ok">モデルによると、いま飲んでいる${esc(curR.name)}があなたにいちばん合っているかもしれません（${brewStr(curR.bb.p)} で予測 ${curR.like.toFixed(1)} 点）。他のお茶と比べてみれば、それも確かめられます。</div>`;
+    h+=`<div style="margin-top:4px">次は <b>${esc(r.name)}</b> を試してみましょう。${esc(TM.explainTea(r,S.prof))}この一杯のカフェインは約 ${(r.bb.pr.caffeine*CUP_ML/100).toFixed(0)} mg です。</div>`;
+    h+=`<table class="mini" style="margin-top:6px"><tr><th>お茶</th><th>あなた向けの淹れ方</th><th>予測</th><th>最高点</th><th></th></tr>`;
+    S.recs.forEach(x=>{const b=bestRatingOf(x.id);
+      h+=`<tr class="${x.id===r.id?'sel':''}"><td>${esc(x.name)}${x.cur?'（今）':''}</td><td>${brewStr(x.bb.p)}</td><td>${x.like.toFixed(1)}</td><td>${b===null?'—':b}</td><td>${x.cur?'':`<button data-ct="${x.id}">試す</button>`}</td></tr>`;});
+    h+=`</table><p class="note" style="margin:6px 0 0">どのお茶も「あなたにいちばん合う淹れ方」で比べています。だから比べているのはお茶そのもので、うまく淹れられたかどうかには左右されません。まだ飲んでいないお茶は少し加点しています。</p>`;
+    h+=`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="tea" data-ct="${r.id}">${esc(r.name)}を、この淹れ方で淹れる</button><button id="back">今は替えない</button></div></div>`;
+    return h;
+  }
+  function teaCard(){
+    const best={}; S.cups.forEach(c=>{ if(!best[c.tea]||c.rating>best[c.tea].rating) best[c.tea]=c; });
+    const ids=Object.keys(best); if(ids.length<2) return '';
+    ids.sort((a,b)=>best[b].rating-best[a].rating);
+    let h=`<div class="teacard"><h4>あなたのお茶カード（現時点）</h4>`;
+    ids.forEach((id,i)=>{const c=best[id];h+=`<div class="row"><span>${i===0?'★ ':''}<b>${esc(teaName(id))}</b> · ${brewStr(c.p)}/100ml</span><span>${c.rating} 点</span></div>`;});
+    h+=`<div style="margin-top:6px">理由：${traitsHtml()}</div>`;
+    const truth=TM.TEA_IDS.map(id=>({id,l:TM.bestBrew(id,persona().prof).like})).sort((a,b)=>b.l-a.l);
+    h+=`<p class="note" style="margin:6px 0 0">デモ専用：この模擬の舌の本当の順位は ${truth.map(x=>esc(teaName(x.id))+' '+x.l.toFixed(1)).join(' &gt; ')}。実際のシステムにこの答えはなく、後日の再訪で確かめるしかありません。</p></div>`;
+    return h;
+  }
+  function render(){
+    const busy=S.stage==='brewing', per=persona();
+    let h=`<div class="demo"><div class="tabs"><span>デモ：模擬の舌</span><select id="persona" ${busy?'disabled':''}>${TM.PERSONAS.map(x=>`<option value="${x.id}" ${x.id===S.persona?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
+      <div class="note">${esc(per.desc)}。本当の好みはモデルから隠されていて、評価と発言を通してだけ伝わります。人を替えると最初からやり直しです。</div></div>`;
+    h+=`<div class="tabs"><button data-m="B" class="${S.mode==='B'?'on':''}" ${busy?'disabled':''}>B 直接操作</button><button data-m="C" class="${S.mode==='C'?'on':''}" ${busy?'disabled':''}>C コーチ</button>`;
+    if(S.mode==='C') h+=`<button data-s="guess" class="${S.style==='guess'?'on':''}" ${busy?'disabled':''}>C2 先に予想</button><button data-s="tell" class="${S.style==='tell'?'on':''}" ${busy?'disabled':''}>C1 すぐ教える</button>`;
+    h+=`<span style="flex:1"></span><button id="speed">速度 ×${S.speed}</button></div>`;
+    h+=`<div class="note">目標：好きなお茶と、自分に合う淹れ方を見つける。これまで ${S.cups.length} 杯、${S.tried.length} 種類。</div>`;
+    const editable = S.mode==='B' && !busy;
+    const T=TM.TEAS[S.tea];
+    h+=`<div class="box"><h4>${S.cups.length&&!busy?'次の一杯':'この一杯'}：${esc(T.name)}（${esc(T.cat)}）${S.mode==='C'?' · C ではコーチが変える':''}</h4>`;
+    if(S.mode==='B') h+=`<div class="tabs" style="margin-bottom:6px">${TM.TEA_IDS.map(id=>`<button data-tea="${id}" class="${id===S.tea?'on':''}" ${busy?'disabled':''}>${esc(teaName(id))}</button>`).join('')}</div>`;
+    h+=`<div class="note" style="margin-bottom:4px">${esc(T.note)}${T.rinse?'。洗茶あり':''}</div>`;
+    h+=`${paramRows(editable)}
+        <div style="margin-top:8px;display:flex;gap:6px"><button class="go" id="brew" ${busy||(S.mode==='C'&&S.stage!=='idle')?'disabled':''}>▶ この一杯を淹れる</button><button id="reset" ${busy?'disabled':''}>やり直す</button></div>
+        ${S.mode==='C'&&S.cups.length>0&&!busy?'<p class="note" style="margin:6px 0 0">C では 2 杯目から、コーチが淹れ方の変え方かお茶の替え方を提案し、確認してから淹れます。</p>':''}</div>`;
+    if(busy){
+      h+=`<div class="box"><h4>抽出中 · ${esc(teaName(S.brewTea))}</h4><b id="rd-ph">${PHASES[S.phase]||''}</b><div class="readout">
+        <div><small id="rd-al">茶葉 g</small><b id="rd-a">0.00</b></div><div><small id="rd-bl">温度 °C</small><b id="rd-b">—</b></div></div></div>`;
+    }
+    const last=lastCup();
+    if(last && !busy){
+      h+=`<div class="box"><h4>${S.cups.length} 杯目 · ${esc(teaName(last.tea))} の味（知覚はモデルによる模擬）</h4>${bars(last.pr)}
+        <div class="rate" style="margin-top:8px"><span style="font-size:12.5px">もう一杯飲みたい？</span><input id="rate" type="range" min="1" max="7" step="1" value="${last.rating}"><b id="ratev">${last.rating}</b></div>
+        <div class="note">点数は模擬の舌の評価が初期値で、スライダーで変えられます。この一杯のカフェインは約 ${last.caf.toFixed(0)} mg、累計約 ${S.caffeine.toFixed(0)} mg（モデルの推定、桁の目安）。</div>
+        ${last.rating>=6?'<div class="verdict ok">「もう一杯飲みたい」に届きました。この淹れ方を記録してもいいし、別のお茶と比べてもいいです。</div>':''}</div>`;
+      if(S.mode==='B') h+=`<p class="note" style="margin:0">お茶を選び、スライダーを動かして「この一杯を淹れる」を押してください。</p>`;
+      if(S.mode==='C' && S.stage==='taste'){
+        h+=`<div class="box"><h4>この一杯についてコーチに話す</h4><div class="quick">${QUICK.map(q=>`<button data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+          <div class="say"><input id="sayin" placeholder="自分の言葉でも：例「なんか喉がイガイガする」"><button id="saybtn">コーチに伝える</button></div>
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap"><button id="speak">模擬の舌に言わせる</button><button class="tea" id="topick">お茶を替える →</button></div>
+          <p class="note" style="margin:6px 0 0">何杯か調整したとき、またはどう変えても直らない不満があるときは、お茶を替えてみましょう。</p></div>`;
+      }
+      if(S.mode==='C' && (S.stage==='ask'||S.stage==='reveal')) h+=coachBlock();
+      if(S.mode==='C' && (S.stage==='pick'||S.stage==='pickReveal')) h+=pickBlock();
+    }
+    h+=teaCard();
+    if(S.cups.length){
+      const gs=[]; if(S.stats.n) gs.push('つまみの予想 '+S.stats.ok+'/'+S.stats.n); if(S.tstats.n) gs.push('お茶の予想 '+S.tstats.ok+'/'+S.tstats.n);
+      h+=`<div class="box"><h4>記録${gs.length?' · '+gs.join(' · '):''}</h4><table class="mini"><tr><th>#</th><th>お茶</th><th>条件</th><th>点</th><th>その後</th></tr>`;
+      S.cups.forEach((c,i)=>{h+=`<tr><td>${i+1}</td><td>${esc(teaName(c.tea))}</td><td>${c.p.T}°C · ${c.p.t}s · ${(+c.p.r).toFixed(1)}g</td><td>${c.rating}</td><td>${c.coach?esc(c.coach)+(c.guess?(c.guess==='right'?' ✓':' ✗'):''):(c.mode==='B'?'自分で調整':'')}</td></tr>`;});
+      h+=`</table></div>`;
+    }
+    const words=Object.keys(S.lexicon);
+    if(words.length) h+=`<div class="box"><h4>あなたの辞書</h4>${words.map(w=>`「${esc(w)}」= ${esc(S.lexicon[w].label)}`).join('<br>')}</div>`;
+    panel.innerHTML=h;
+    bind();
+    applyTeaLook();
+    drawScreen();
+  }
+  function bind(){
+    const ps=document.getElementById('persona'); if(ps) ps.onchange=()=>setPersona(ps.value);
+    panel.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+    panel.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>setStyle(b.dataset.s));
+    panel.querySelectorAll('[data-tea]').forEach(b=>b.onclick=()=>setTea(b.dataset.tea));
+    panel.querySelectorAll('input[data-k]').forEach(inp=>inp.oninput=()=>{S.p[inp.dataset.k]=+(+inp.value).toFixed(1);inp.parentNode.querySelector('b').textContent=fmt(inp.dataset.k,S.p[inp.dataset.k]);drawScreen();});
+    const b=document.getElementById('brew'); if(b) b.onclick=brew;
+    const r=document.getElementById('reset'); if(r) r.onclick=reset;
+    const spd=document.getElementById('speed'); if(spd) spd.onclick=toggleSpeed;
+    const rt=document.getElementById('rate');
+    if(rt){ rt.oninput=()=>{lastCup().rating=+rt.value; document.getElementById('ratev').textContent=rt.value;}; rt.onchange=()=>{refit();render();}; }
+    panel.querySelectorAll('[data-q]').forEach(q=>q.onclick=()=>submitFeedback(q.dataset.q));
+    const sb=document.getElementById('saybtn'), si=document.getElementById('sayin');
+    if(sb) sb.onclick=()=>submitFeedback(si.value);
+    if(si) si.onkeydown=e=>{if(e.key==='Enter'&&!e.isComposing) submitFeedback(si.value);};
+    const sp=document.getElementById('speak'); if(sp) sp.onclick=()=>submitFeedback(speakForMe());
+    ['topick','topick2'].forEach(id=>{const e=document.getElementById(id); if(e) e.onclick=openPick;});
+    panel.querySelectorAll('[data-g]').forEach(g=>g.onclick=()=>guess(g.dataset.g));
+    panel.querySelectorAll('[data-tg]').forEach(g=>g.onclick=()=>guessTea(g.dataset.tg));
+    panel.querySelectorAll('[data-ct]').forEach(g=>g.onclick=()=>chooseTea(g.dataset.ct));
+    const cf=document.getElementById('confirm'); if(cf) cf.onclick=confirmCoach;
+    const sw=document.getElementById('saveword'); if(sw) sw.onclick=saveWord;
+    const bk=document.getElementById('back'); if(bk) bk.onclick=backToTaste;
+  }
+
+  // ---------------------------------------------------------------- animation
+  const tmpV=V(0,0,0), ZAX=V(0,0,1);
+  function nLeaves(p){return Math.max(6,Math.min(dose.length,Math.round(p.r*13)));}
+  function resetAnim(){
+    chLiq.scale.y=0.001; cupLiq.scale.y=0.001; stream.visible=false; chamberG.rotation.z=0; dc.rotation.z=0;
+    drops.forEach(d=>{d.on=false;d.m.visible=false;});
+  }
+  function setLiqColor(mesh,p,k){const c=TM.teaColor(p,k,S.brewTea);mesh.material.color.setRGB(c[0],c[1],c[2]);}
+  function setValve(hex,on){valveLed.material.emissive.setHex(hex);valveLed.material.emissiveIntensity=on?1:0;}
+  const clock=new THREE.Clock();
+  function step(dt0,t){
+    const dt=dt0*(S.stage==='brewing'?S.speed:1);
+    const P=S.stage==='brewing'?S.brewP:(lastCup()?lastCup().p:S.p);
+    const picking=S.stage==='pick'||S.stage==='pickReveal';
+    const ph=S.stage==='brewing'?S.phase:(picking?7:(S.cups.length?6:-1));
+    let pumping=false, heating=false;
+    if(S.stage==='brewing'){
+      S.phaseT+=dt; const k=Math.min(1,S.phaseT/phDur(S.phase));
+      const n=nLeaves(P), can=CANS[S.brewTea];
+      if(S.phase===0){
+        can.fd.rotation.y+=dt*10;
+        dose.forEach((d,i)=>{ if(i>=n){d.m.visible=false;return;}
+          const a=clamp01((k-d.delay*0.3)/0.4); d.m.visible=a>0;
+          const cx=CX+d.r*0.45*Math.cos(d.a), cz=CZ+d.r*0.45*Math.sin(d.a);
+          if(a<1){ can.chute.getPointAt(a,tmpV); d.m.position.copy(tmpV); }
+          else if(k<0.8){ d.m.position.set(cx,4.68+0.03*Math.sin(d.ph),cz); }
+          else { const f=(k-0.8)/0.2; d.m.position.set(cx+(CX+d.r*Math.cos(d.a)-cx)*f, 4.68+(d.yb-4.68)*f*f, cz+(CZ+d.r*Math.sin(d.a)-cz)*f); }
+          d.m.rotation.set(t*d.sp,d.a,t*d.sp*0.7); });
+        dc.rotation.z = k>0.8 ? -1.2*Math.min(1,(k-0.8)/0.08) : 0;
+        setText('rd-al','茶葉 g'); setText('rd-a',(P.r*CUP_ML/100*Math.min(1,k/0.75)).toFixed(2)); setText('rd-bl','フィーダー'); setText('rd-b',teaName(S.brewTea));
+      } else dc.rotation.z*=(1-Math.min(1,dt*4));
+      if(S.phase===1){
+        pumping=true; heating=true; pumpH.rotation.x+=dt*10; rotH.rotation.x+=dt*10;
+        if(k<0.4&&Math.random()<0.6) spawn(tubeHot,0xff7a5c);
+        const lv = k<0.45 ? k/0.45*0.5 : 0.5*(1-(k-0.45)/0.55);
+        chLiq.scale.y=Math.max(0.001,lv); setLiqColor(chLiq,P,0.06);
+        setValve(0xffaa33,k>0.45);
+        if(k>0.45&&Math.random()<0.5) spawn(wasteTube,0xd8c27a);
+        if(k>0.45) wasteW.scale.y=Math.min(0.9,wasteW.scale.y+dt*0.01);
+        dose.forEach((d,i)=>{if(i>=n)return; d.m.position.y=Math.min(3.08+chLiq.scale.y*0.9+0.02,d.yb+0.35*lv*(0.4+0.6*Math.abs(Math.sin(d.ph+t))));});
+        setText('rd-al','洗茶の湯 ml'); setText('rd-a',(CUP_ML*0.6*Math.min(1,k/0.45)).toFixed(0)); setText('rd-bl','三方弁'); setText('rd-b',k>0.45?'排水へ':'閉');
+      }
+      if(S.phase===2){
+        pumping=true; heating=true;
+        pumpC.rotation.x+=dt*10; pumpH.rotation.x+=dt*10; rotC.rotation.x+=dt*10; rotH.rotation.x+=dt*10;
+        const hotFrac=Math.min(1,Math.max(0,(P.T-22)/(100-22)));
+        if(Math.random()<0.6){const isHot=Math.random()<hotFrac; spawn(isHot?tubeHot:tubeCold,isHot?0xff7a5c:0x6fb6ff);}
+        chLiq.scale.y=Math.max(0.001,k*0.92); setLiqColor(chLiq,P,0.02);
+        tankWater.scale.y=Math.max(0.2,1-0.004*S.cups.length-0.004*k);
+        dose.forEach((d,i)=>{if(i>=n)return; const y=d.yb+0.75*k*(0.4+0.6*Math.abs(Math.sin(d.ph))); d.m.position.y=Math.min(3.08+chLiq.scale.y,y);});
+        setText('rd-al','注湯 ml'); setText('rd-a',(CUP_ML*k).toFixed(0)); setText('rd-bl','温度 °C'); setText('rd-b',(22+(P.T-22)*Math.min(1,k*1.15)).toFixed(1));
+      }
+      if(S.phase===3){
+        setLiqColor(chLiq,P,Math.pow(k,0.8));
+        dose.forEach((d,i)=>{if(i>=n)return; d.a+=dt*d.sp*0.8*(1-0.6*k); const y=3.15+0.55*(0.5+0.5*Math.sin(t*d.sp+d.ph))*(1-0.7*k);
+          d.m.position.set(CX+d.r*Math.cos(d.a),y,CZ+d.r*Math.sin(d.a)); d.m.rotation.y=d.a; d.m.rotation.x+=dt*d.sp;});
+        setText('rd-al','時間 s'); setText('rd-a',Math.round(P.t*k)+' / '+P.t); setText('rd-bl','温度 °C'); setText('rd-b',(P.T-Math.min(6,(P.T-25)*0.0006*P.t)*k).toFixed(1));
+      }
+      if(S.phase===4){
+        setValve(0x33ff66,true);
+        chLiq.scale.y=Math.max(0.001,0.92*(1-k)); setLiqColor(cupLiq,P,1); setLiqColor(stream,P,1);
+        stream.visible=k<0.97; cupLiq.scale.y=Math.max(0.001,0.75*k);
+        dose.forEach((d,i)=>{if(i>=n)return; d.m.position.y+=(d.yb-d.m.position.y)*Math.min(1,dt*4);});
+        setText('rd-al','カップへ ml'); setText('rd-a',(CUP_ML*0.94*k).toFixed(0)); setText('rd-bl','茶葉に残る'); setText('rd-b',(CUP_ML*0.06*k).toFixed(0)+' ml');
+      }
+      if(S.phase===5){
+        stream.visible=false;
+        if(!S.dumpInit){ S.dumpInit=true; dose.forEach(d=>{ d.loc.copy(d.m.position).sub(chCenter); }); }
+        const tilt = k<0.3?k/0.3:(k<0.7?1:1-(k-0.7)/0.3), ang=-2.0*tilt;
+        chamberG.rotation.z=ang;
+        const pileTop=0.5+Math.max(pile.scale.y,0.02);
+        dose.forEach((d,i)=>{ if(i>=n) return; const s=clamp01((k-0.22-d.delay*0.2)/0.3);
+          if(s<=0){ tmpV.copy(d.loc).applyAxisAngle(ZAX,ang).add(chCenter); d.m.position.copy(tmpV); }
+          else if(s<1){ leafChute.getPointAt(s,tmpV); d.m.position.copy(tmpV); }
+          else d.m.position.set(2.0+d.r*0.8*Math.cos(d.a),pileTop+0.03,1.2+d.r*0.8*Math.sin(d.a)); });
+        if(k>0.35&&k<0.75&&Math.random()<0.7) spawn(sprayC,0x9fd3ff);
+        setValve(0xffaa33,k>0.4);
+        if(k>0.4&&Math.random()<0.4) spawn(wasteTube,0xbcd6e6);
+        if(k>0.4) wasteW.scale.y=Math.min(0.9,wasteW.scale.y+dt*0.006);
+        pile.scale.y=Math.min(0.5,0.04*(S.dumped+k));
+        setText('rd-al','すすぎ ml'); setText('rd-a',(30*clamp01((k-0.35)/0.4)).toFixed(0)); setText('rd-bl','茶殻'); setText('rd-b','→ 茶殻ボックス');
+      }
+      if(S.phase!==1&&S.phase!==4&&S.phase!==5) setValve(0x33ff66,false);
+      if(S.phaseT>=phDur(S.phase)){
+        S.phase++; S.phaseT=0; S.dumpInit=false;
+        while(S.phase<PHASES.length&&phDur(S.phase)===0) S.phase++;
+        const e=document.getElementById('rd-ph'); if(e) e.textContent=PHASES[S.phase]||'';
+        if(S.phase>=PHASES.length){ chamberG.rotation.z=0; setValve(0x33ff66,false); finishBrew(); }
+      }
+    }
+    hotRing.material.emissiveIntensity = heating ? 0.5+0.4*Math.sin(t*6) : 0;
+    drops.forEach(d=>{if(!d.on)return; d.u+=dt0*1.1*(S.stage==='brewing'?S.speed:1); if(d.u>=1){d.on=false;d.m.visible=false;return;} d.c.getPointAt(d.u,tmpV); d.m.position.copy(tmpV);});
+    const hotCup = S.stage!=='brewing' && S.cups.length && P.T>=70;
+    steam.forEach(s=>{s.u+=dt0*0.35; if(s.u>1){s.u=0;s.x=(Math.random()-.5)*0.4;s.z=(Math.random()-.5)*0.4;}
+      s.m.position.set(CX+s.x+0.1*Math.sin(t+s.u*5),1.35+s.u*1.2,CZ+s.z); s.m.scale.setScalar(0.6+s.u*1.4); s.m.material.opacity=hotCup?0.28*(1-s.u)*Math.min(1,s.u*4):0;});
+    micRing.material.emissiveIntensity = (S.mode==='C' && S.stage==='taste') ? 0.5+0.4*Math.sin(t*4) : 0;
+    const curTea=S.stage==='brewing'?S.brewTea:S.tea;
+    const recId=S.stage==='pickReveal'&&S.pickChoice?S.pickChoice.id:null;
+    TM.TEA_IDS.forEach(id=>{const c=CANS[id]; const lift=id===curTea?0.3:0; c.g.position.y+=(CAN_Y+lift-c.g.position.y)*Math.min(1,dt0*5);
+      c.band.material.emissiveIntensity = id===recId ? 0.35+0.3*Math.sin(t*5) : (id===curTea?0.18:0);});
+    updCam(); renderer.render(scene,camera);
+    const w=viewer.clientWidth||800,h=viewer.clientHeight||760;
+    LBL.forEach(o=>{
+      if(o.tea) o.v.y=o.y0+CANS[o.tea].g.position.y-CAN_Y;
+      tmpV.copy(o.v).project(camera); o.el.style.display=tmpV.z<1?'block':'none';
+      o.el.style.left=((tmpV.x+1)/2*w)+'px'; o.el.style.top=((1-tmpV.y)/2*h)+'px';
+      const hot=o.tea ? (o.tea===curTea&&ph<=0)||o.tea===recId||(ph===0&&o.tea===S.brewTea) : (ph>=0&&o.ph.indexOf(ph)>=0);
+      o.el.classList.toggle('hot',!!hot); o.el.classList.toggle('dim',ph>=0&&ph<7&&!hot&&!o.tea);});
+  }
+  function setText(id,v){const e=document.getElementById(id); if(e) e.textContent=v;}
+  function animate(){ const dt=Math.min(0.05,clock.getDelta()); step(dt,clock.elapsedTime); requestAnimationFrame(animate); }
+
+  // test hook + url params (?mode=B&style=tell&persona=rich&brew=1)
+  window.__tea={S,brew,submitFeedback,guess,confirmCoach,setMode,setStyle,saveWord,reset,step,openPick,guessTea,chooseTea,setPersona,setTea,speakForMe,backToTaste,toggleSpeed};
+  const qp=new URLSearchParams(location.search);
+  if(qp.get('mode')==='B') S.mode='B';
+  if(qp.get('style')==='tell') S.style='tell';
+  if(qp.get('persona')&&TM.PERSONAS.some(x=>x.id===qp.get('persona'))) S.persona=qp.get('persona');
+  resize(); render();
+  if(qp.get('brew')) brew();
+  animate();
+})();
+</script>
+</body>
+</html>
