@@ -394,6 +394,18 @@
   function beam(a,b,w,h,mat){const A=V(...a),B=V(...b),d=B.clone().sub(A),L=d.length();
     const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,L),mat);m.position.copy(A).add(B).multiplyScalar(0.5);
     m.quaternion.setFromUnitVectors(V(0,0,1),d.normalize());scene.add(m);return m;}
+  // 開放トラフ（U 字シュート）：底板 + 2 枚の側板
+  function trough(a,b,w,d,mat){const A=V(...a),B=V(...b),dir=B.clone().sub(A),L=dir.length();dir.normalize();
+    const g=new THREE.Group();g.position.copy(A).add(B).multiplyScalar(0.5);scene.add(g);
+    // 開口が必ず上を向くように基底を作る（setFromUnitVectors だとロールが不定になる）
+    const xAxis=new THREE.Vector3().crossVectors(V(0,1,0),dir);
+    if(xAxis.lengthSq()<1e-6) xAxis.set(1,0,0);
+    xAxis.normalize();
+    const yAxis=new THREE.Vector3().crossVectors(dir,xAxis).normalize();
+    g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(xAxis,yAxis,dir));
+    const bot=new THREE.Mesh(new THREE.BoxGeometry(w,0.03,L),mat);bot.position.y=-d*0.5;g.add(bot);
+    for(const s of [-1,1]){const sp=new THREE.Mesh(new THREE.BoxGeometry(0.04,d,L),mat);sp.position.x=s*w*0.5;g.add(sp);}
+    return g;}
   const hoseCold = M(0xcfd8e0,{transparent:true,opacity:.92,roughness:.35});
   const hoseHot  = M(0xe0d3cc,{transparent:true,opacity:.92,roughness:.35});
 
@@ -494,22 +506,28 @@
   const stream = cyl(0.035,0.035,1.0,M(0xc9a64a,{transparent:true,opacity:.8}),CX,2.0,CZ,10);
   stream.visible=false;
 
-  // waste tank (left) and spent-leaf box (right)
-  // 排水：三方弁 → 排水ホース → 排水タンク（口金付き）
-  const wasteTube = curve([[CX-0.16,2.70,CZ],[-0.75,2.42,CZ+0.18],[-1.45,1.62,1.14],[-2.05,1.40,1.2]]);
-  tube([[CX-0.16,2.70,CZ],[-0.75,2.42,CZ+0.18],[-1.45,1.62,1.14],[-2.05,1.40,1.2]],0.075,M(0x5c6066,{transparent:true,opacity:.85,roughness:.4}));
-  cyl(0.10,0.10,0.12,steel,CX-0.16,2.70,CZ,14);
+  // ---- 排水系：三方弁の「排水側」に実体のある横ポートを作り、そこからホースを出す
+  cyl(0.065,0.065,0.16,steel,CX-0.26,2.78,CZ,14).rotation.z=Math.PI/2;   // 横ポート（弁体に接続）
+  cyl(0.085,0.085,0.11,dark,CX-0.35,2.78,CZ,14);                          // エルボ
+  const drainPath=[[-0.35,2.78,CZ],[-0.47,2.52,CZ+0.03],[-0.92,2.02,1.07],[-1.55,1.66,1.13],[-2.05,1.56,1.20]];
+  const wasteTube = curve(drainPath);
+  tube(drainPath,0.075,M(0x4f5459,{transparent:true,opacity:.92,roughness:.45}));
+  for(const c of [[-0.55,2.34,1.05],[-1.28,1.78,1.12]]) cyl(0.088,0.088,0.11,dark,c[0],c[1],c[2],12);  // ホースクランプ
   const waste = box(1.15,1.05,1.15,glassM(),-2.05,0.92,1.2); edges(waste,0x8aa0ad);
   const wasteW = box(1.03,1,1.03,M(0x6b6257,{transparent:true,opacity:.5,depthWrite:false}),-2.05,0.42,1.2);
   wasteW.geometry.translate(0,0.5,0); wasteW.scale.y=0.05;
-  box(1.20,0.05,1.20,steel,-2.05,1.45,1.2);
-  cyl(0.07,0.07,0.10,brass,-2.05,1.50,1.2,14);
-  // 茶殻ダクト：幅のあるシュート（板金ダクト）
-  const leafChute = curve([[0.72,3.15,CZ],[1.35,2.40,CZ+0.08],[1.95,1.32,1.2]]);
-  beam([0.72,3.15,CZ],[1.35,2.40,CZ+0.08],0.26,0.20,M(0x8d959c,{metalness:.5,roughness:.45}));
-  beam([1.35,2.40,CZ+0.08],[1.95,1.32,1.2],0.26,0.20,M(0x8d959c,{metalness:.5,roughness:.45}));
-  box(0.36,0.10,0.42,steel,0.72,3.19,CZ);
+  box(1.20,0.05,1.20,steel,-2.05,1.45,1.2);                               // タンク蓋
+  cyl(0.078,0.078,0.14,brass,-2.05,1.54,1.2,14);                          // タンク口金（ホースがここに刺さる）
+
+  // ---- 茶殻：浸出室を倒して、開放トラフ（U 字シュート）を滑り落とす
+  const leafChute = curve([[0.70,3.20,CZ],[1.30,2.35,CZ+0.06],[1.98,1.42,1.19]]);
+  trough([0.70,3.20,CZ],[1.30,2.35,CZ+0.06],0.42,0.20,M(0x9aa3ab,{metalness:.55,roughness:.4,side:THREE.DoubleSide}));
+  trough([1.30,2.35,CZ+0.06],[1.98,1.42,1.19],0.42,0.20,M(0x9aa3ab,{metalness:.55,roughness:.4,side:THREE.DoubleSide}));
+  box(0.32,0.10,0.36,steel,0.70,3.22,CZ);                                  // 投入口の縁
   const bin = box(1.05,0.95,1.05,M(0x2a2e33,{transparent:true,opacity:.5,depthWrite:false}),2.0,0.92,1.2); edges(bin,0x4b5563);
+  const binLid = box(1.02,0.04,1.02,steel,2.0,1.667,1.135); binLid.rotation.x=-0.55;   // 跳ね上げ蓋
+  cyl(0.05,0.05,0.18,brass,2.0,1.40,0.70,10).rotation.z=Math.PI/2;
+  box(0.34,0.09,0.06,steel,2.0,1.02,1.74);                                  // 引き出し取っ手
   const pile = cyl(0.38,0.42,1,M(0x3a2a1a,{roughness:.9}),2.0,0.5,1.2,20);
   pile.geometry.translate(0,0.5,0); pile.scale.y=0.001;
   const sprayC = curve([[CX-0.45,4.17,CZ],[CX-0.1,3.8,CZ],[CX+0.2,3.3,CZ]]);
