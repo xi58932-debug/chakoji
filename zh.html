@@ -390,6 +390,12 @@
   const curve = pts=>new THREE.CatmullRomCurve3(pts.map(p=>V(...p)));
   const tubeMat = M(0xffffff,{transparent:true,opacity:.55});
   function tube(pts,r=0.035,mat=tubeMat){const c=curve(pts);scene.add(new THREE.Mesh(new THREE.TubeGeometry(c,40,r,8,false),mat));return c;}
+  // 2 点間を角材でつなぐ（シュートやダクト用）
+  function beam(a,b,w,h,mat){const A=V(...a),B=V(...b),d=B.clone().sub(A),L=d.length();
+    const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,L),mat);m.position.copy(A).add(B).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(V(0,0,1),d.normalize());scene.add(m);return m;}
+  const hoseCold = M(0xcfd8e0,{transparent:true,opacity:.92,roughness:.35});
+  const hoseHot  = M(0xe0d3cc,{transparent:true,opacity:.92,roughness:.35});
 
   const ground = new THREE.Mesh(new THREE.CircleGeometry(17,64),M(0x34302c,{roughness:.85}));
   ground.rotation.x=-Math.PI/2; ground.position.y=-0.01; scene.add(ground);
@@ -431,14 +437,20 @@
   const pumpC = cyl(0.26,0.26,0.3,M(0x7aa7d6,{metalness:.3}),-1.2,4.6,-0.9); pumpC.rotation.z=Math.PI/2;
   const pumpH = cyl(0.26,0.26,0.3,M(0xd67a6a,{metalness:.3}),1.2,4.6,-0.9); pumpH.rotation.z=Math.PI/2;
   const rotC = box(0.06,0.42,0.06,dark,-1.04,4.6,-0.9), rotH = box(0.06,0.42,0.06,dark,1.36,4.6,-0.9);
-  const tubeCold = tube([[-4.3,3.35,-0.55],[-3.6,3.0,-1.02],[-2.4,3.7,-1.05],[-1.45,4.45,-0.92],[-1.2,4.6,-0.9],[-0.95,4.58,-0.3],[-0.55,4.5,0.6],[-0.46,4.44,0.96]]);
-  const tubeHot  = tube([[4.3,2.7,-0.55],[3.6,3.0,-1.02],[2.4,3.7,-1.05],[1.45,4.45,-0.92],[1.2,4.6,-0.9],[0.95,4.58,-0.3],[0.1,4.5,0.6],[-0.42,4.44,1.0]]);
-  cyl(0.11,0.09,0.14,brass,-0.45,4.44,1.0,20);   // 混合マニホールド（2本の管がここで合流）
-  // 配管の貫通部：パネルの穴とゴムブッシュ（グロメット）
-  cyl(0.09,0.09,0.12,dark,-3.5,3.03,-1.02,16).rotation.z=Math.PI/2;
-  cyl(0.09,0.09,0.12,dark, 3.5,3.03,-1.02,16).rotation.z=Math.PI/2;
-  cyl(0.09,0.09,0.10,dark,-1.77,4.2,-0.96,16);
-  cyl(0.09,0.09,0.10,dark, 1.77,4.2,-0.96,16);
+  // 配管は外装の外側を這わせる（3D プリンタのチューブと同じ扱い）
+  const tubeCold = tube([[-4.3,3.42,-0.55],[-4.05,3.35,-1.0],[-3.74,3.6,-1.12],[-3.7,4.2,-1.06],[-3.67,4.62,-0.95],[-3.45,4.84,-0.9],[-2.6,4.76,-0.9],[-1.2,4.6,-0.9],[-0.95,4.56,-0.3],[-0.55,4.48,0.6],[-0.44,4.46,0.96]],0.045,hoseCold);
+  const tubeHot  = tube([[4.3,2.7,-0.55],[4.05,3.35,-1.0],[3.74,3.6,-1.12],[3.7,4.2,-1.06],[3.67,4.62,-0.95],[3.45,4.84,-0.9],[2.6,4.76,-0.9],[1.2,4.6,-0.9],[0.95,4.56,-0.3],[0.1,4.48,0.6],[-0.42,4.46,1.0]],0.045,hoseHot);
+  // チューブクリップ（外装に固定）
+  box(0.13,0.11,0.20,dark,-3.73,4.02,-1.09); box(0.13,0.11,0.20,dark, 3.73,4.02,-1.09);
+  box(0.13,0.11,0.20,dark,-3.69,4.50,-0.97); box(0.13,0.11,0.20,dark, 3.69,4.50,-0.97);
+  // 側板の貫通部：穴とゴムブッシュ（グロメット）
+  cyl(0.095,0.095,0.10,dark,-3.5,4.79,-0.91,16).rotation.z=Math.PI/2;
+  cyl(0.095,0.095,0.10,dark, 3.5,4.79,-0.91,16).rotation.z=Math.PI/2;
+  // 混合マニホールド → ノズル（茶と管のつなぎ目）
+  cyl(0.14,0.12,0.18,brass,-0.45,4.50,1.0,22);
+  cyl(0.15,0.15,0.05,brass,-0.45,4.42,1.0,22);
+  cyl(0.055,0.12,0.26,steel,-0.45,4.30,1.0,18);
+  cyl(0.035,0.035,0.10,steel,-0.45,4.63,1.0,12);
   // 前面ガラス扉の取っ手
   box(0.72,0.07,0.09,steel,2.55,4.52,2.10);
 
@@ -475,7 +487,7 @@
   chLiq.geometry.translate(0,0.5,0); chLiq.scale.y=0.001;
   box(0.4,0.12,0.3,dark,-0.95,3.6,CZ-0.2);       // tilt servo
   cyl(0.06,0.06,0.3,steel,-0.62,3.6,CZ-0.2,12).rotation.z=Math.PI/2;
-  const nozzle = cyl(0.05,0.08,0.18,steel,CX-0.45,4.36,CZ,12); nozzle.rotation.z=-0.5;
+
   box(0.36,0.2,0.3,dark,CX,2.78,CZ);
   const valveLed = cyl(0.04,0.04,0.02,M(0x333333,{emissive:new THREE.Color(0x33ff66),emissiveIntensity:0}),CX+0.19,2.8,CZ+0.15,10); valveLed.rotation.x=Math.PI/2;
   cyl(0.05,0.03,0.18,steel,CX,2.6,CZ,12);
@@ -483,15 +495,24 @@
   stream.visible=false;
 
   // waste tank (left) and spent-leaf box (right)
-  const wasteTube = tube([[CX-0.15,2.74,CZ],[-0.8,2.3,CZ+0.15],[-2.0,1.5,1.2]]);
-  const waste = box(1.0,1.0,1.0,glassM(),-2.0,0.95,1.2); edges(waste,0x8aa0ad);
-  const wasteW = box(0.9,1,0.9,M(0xc9b36a,{transparent:true,opacity:.55,depthWrite:false}),-2.0,0.47,1.2);
+  // 排水：三方弁 → 排水ホース → 排水タンク（口金付き）
+  const wasteTube = curve([[CX-0.16,2.70,CZ],[-0.75,2.42,CZ+0.18],[-1.45,1.62,1.14],[-2.05,1.40,1.2]]);
+  tube([[CX-0.16,2.70,CZ],[-0.75,2.42,CZ+0.18],[-1.45,1.62,1.14],[-2.05,1.40,1.2]],0.075,M(0x5c6066,{transparent:true,opacity:.85,roughness:.4}));
+  cyl(0.10,0.10,0.12,steel,CX-0.16,2.70,CZ,14);
+  const waste = box(1.15,1.05,1.15,glassM(),-2.05,0.92,1.2); edges(waste,0x8aa0ad);
+  const wasteW = box(1.03,1,1.03,M(0x6b6257,{transparent:true,opacity:.5,depthWrite:false}),-2.05,0.42,1.2);
   wasteW.geometry.translate(0,0.5,0); wasteW.scale.y=0.05;
-  const leafChute = tube([[0.75,3.25,CZ],[1.4,2.4,CZ+0.1],[2.0,1.5,1.2]],0.1,chuteMat);
-  const bin = box(1.0,0.9,1.0,M(0x3a3f46,{transparent:true,opacity:.35,depthWrite:false}),2.0,0.95,1.2); edges(bin,0x4b5563);
+  box(1.20,0.05,1.20,steel,-2.05,1.45,1.2);
+  cyl(0.07,0.07,0.10,brass,-2.05,1.50,1.2,14);
+  // 茶殻ダクト：幅のあるシュート（板金ダクト）
+  const leafChute = curve([[0.72,3.15,CZ],[1.35,2.40,CZ+0.08],[1.95,1.32,1.2]]);
+  beam([0.72,3.15,CZ],[1.35,2.40,CZ+0.08],0.60,0.09,M(0x9aa3ab,{metalness:.55,roughness:.38,transparent:true,opacity:.6}));
+  beam([1.35,2.40,CZ+0.08],[1.95,1.32,1.2],0.60,0.09,M(0x9aa3ab,{metalness:.55,roughness:.38,transparent:true,opacity:.6}));
+  box(0.68,0.12,0.68,steel,0.72,3.19,CZ);
+  const bin = box(1.05,0.95,1.05,M(0x2a2e33,{transparent:true,opacity:.5,depthWrite:false}),2.0,0.92,1.2); edges(bin,0x4b5563);
   const pile = cyl(0.38,0.42,1,M(0x3a2a1a,{roughness:.9}),2.0,0.5,1.2,20);
   pile.geometry.translate(0,0.5,0); pile.scale.y=0.001;
-  const sprayC = curve([[CX-0.45,4.3,CZ],[CX-0.1,3.8,CZ],[CX+0.2,3.3,CZ]]);
+  const sprayC = curve([[CX-0.45,4.17,CZ],[CX-0.1,3.8,CZ],[CX+0.2,3.3,CZ]]);
 
   const dose=[]; for(let i=0;i<40;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.015,0.05),i%2?leafMat:leafMat2);l.visible=false;scene.add(l);
     dose.push({m:l,a:Math.random()*Math.PI*2,r:0.08+Math.random()*0.36,yb:3.1+Math.random()*0.08,delay:Math.random(),sp:0.6+Math.random()*0.8,ph:Math.random()*6,loc:V(0,0,0)});}
