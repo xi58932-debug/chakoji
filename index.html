@@ -396,7 +396,14 @@
   // body
   edges(box(10.4,0.4,4.4,walnut,0,0.2,0.1),0x24130a);
   edges(box(7,3.8,1.4,shell,0,2.3,-1.4));
-  const head = box(7,1.4,4.2,M(0xd8e4ea,{transparent:true,opacity:.22,roughness:.1,depthWrite:false}),0,4.9,0); edges(head,0x4b5563);
+  const head = box(7,1.4,4.2,M(0xd8e4ea,{transparent:true,opacity:.16,roughness:.08,depthWrite:false}),0,4.9,0); edges(head,0x8a949e);
+  // ヘッド内部の背壁（奥の透けを消す）と金属フレームで、機械らしい筐体にする
+  box(6.86,1.3,0.06,M(0x332e28,{roughness:.65}),0,4.9,-1.97);
+  for(const fx of [-3.44,3.44]) for(const fz of [-2.04,2.04]) box(0.1,1.36,0.1,steel,fx,4.9,fz);
+  for(const fz of [-2.04,2.04]) box(6.98,0.1,0.1,steel,0,5.56,fz);
+  for(const fx of [-3.44,3.44]) box(0.1,0.1,4.18,steel,fx,5.56,0);
+  for(const fz of [-2.04,2.04]) box(6.98,0.09,0.22,brass,0,4.24,fz);
+  for(const fx of [-3.44,3.44]) box(0.22,0.09,4.18,brass,fx,4.24,0);
   box(7,0.08,4.2,walnut,0,5.64,0);
   box(2.0,1.2,0.06,M(0x1f7a4d),0,2.7,-0.68);
   for(let i=0;i<4;i++) box(0.25,0.18,0.06,dark,-0.6+i*0.4,2.9,-0.63);
@@ -418,21 +425,22 @@
   const pumpC = cyl(0.26,0.26,0.3,M(0x7aa7d6,{metalness:.3}),-1.2,4.6,-0.9); pumpC.rotation.z=Math.PI/2;
   const pumpH = cyl(0.26,0.26,0.3,M(0xd67a6a,{metalness:.3}),1.2,4.6,-0.9); pumpH.rotation.z=Math.PI/2;
   const rotC = box(0.06,0.42,0.06,dark,-1.04,4.6,-0.9), rotH = box(0.06,0.42,0.06,dark,1.36,4.6,-0.9);
-  const tubeCold = tube([[-4.3,3.42,-0.5],[-3.6,4.2,-0.7],[-1.2,4.6,-0.9],[-1.0,4.8,-0.4],[-0.6,4.85,0.2],[-0.46,4.6,0.85],[-0.46,4.46,0.98]]);
-  const tubeHot  = tube([[4.3,2.62,-0.5],[3.6,4.2,-0.7],[1.2,4.6,-0.9],[1.0,4.8,-0.4],[0.2,4.85,0.2],[-0.4,4.6,0.85],[-0.44,4.46,1.0]]);
+  const tubeCold = tube([[-4.3,3.35,-0.55],[-3.6,3.0,-1.02],[-2.4,3.7,-1.05],[-1.45,4.45,-0.92],[-1.2,4.6,-0.9],[-0.95,4.58,-0.3],[-0.55,4.5,0.6],[-0.46,4.44,0.96]]);
+  const tubeHot  = tube([[4.3,2.7,-0.55],[3.6,3.0,-1.02],[2.4,3.7,-1.05],[1.45,4.45,-0.92],[1.2,4.6,-0.9],[0.95,4.58,-0.3],[0.1,4.5,0.6],[-0.42,4.44,1.0]]);
+  cyl(0.11,0.09,0.14,brass,-0.45,4.44,1.0,20);   // 混合マニホールド（2本の管がここで合流）
 
   // tea canisters ×7 on the rear shelf, each with a screw feeder and a chute to the dosing cup
   box(7.4,0.1,1.3,walnut,0,5.68,-1.4);
   const CAN_Y=5.73, CANS={};
   const leafMat = M(0x3f6b2a,{roughness:.8}), leafMat2 = M(0x5a7f2f,{roughness:.8});
-  const chuteMat = M(0xffffff,{transparent:true,opacity:.35,depthWrite:false});
+  const chuteMat = M(0xbfc7cf,{transparent:true,opacity:.22,depthWrite:false});
   TM.TEA_IDS.forEach((id,i)=>{
     const T=TM.TEAS[id], x=-3+i, g=new THREE.Group(); g.position.set(x,CAN_Y,-1.4); scene.add(g);
     const body=new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.36,1.0,28),M(0xeee9dd,{metalness:.25,roughness:.4})); body.position.y=0.5; g.add(body);
     const band=new THREE.Mesh(new THREE.CylinderGeometry(0.366,0.366,0.42,28),M(T.can,{emissive:new THREE.Color(T.can),emissiveIntensity:0})); band.position.y=0.52; g.add(band);
     const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.375,0.375,0.12,28),brass); lid.position.y=1.05; g.add(lid);
     const fd = box(0.32,0.16,0.32,dark,x,5.48,-1.4);
-    const ch = tube([[x,5.36,-1.4],[x*0.7,5.25,-0.9],[x*0.25,5.08,0.2],[0,4.92,CZ]],0.05,chuteMat);
+    const ch = tube([[x,5.36,-1.4],[x*0.7,5.25,-0.9],[x*0.25,5.08,0.2],[0,4.92,CZ]],0.035,chuteMat);
     CANS[id]={g,band,fd,chute:ch,x};
   });
 
@@ -480,7 +488,7 @@
   const cupG = new THREE.Mesh(new THREE.CylinderGeometry(0.46,0.38,1.0,36,1,true),glassM()); cupG.position.y=0.5; cup.add(cupG);
   const cupB = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,0.05,36),M(0xffffff,{transparent:true,opacity:.4})); cupB.position.y=0.025; cup.add(cupB);
   const cupLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.43,0.37,1,36),M(0xc9a64a,{transparent:true,opacity:.85}));
-  cupLiq.geometry.translate(0,0.5,0); cupLiq.position.y=0.05; cupLiq.scale.y=0.001; cup.add(cupLiq);
+  cupLiq.geometry.translate(0,0.5,0); cupLiq.position.y=0.05; cupLiq.scale.y=0.001; cupLiq.visible=false; cup.add(cupLiq);
   const steam=[]; for(let i=0;i<14;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.07,10,10),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}));scene.add(s);steam.push({m:s,u:Math.random(),x:(Math.random()-.5)*0.4,z:(Math.random()-.5)*0.4});}
 
   // screen with live text + mic
@@ -867,6 +875,7 @@
     const recId=S.stage==='pickReveal'&&S.pickChoice?S.pickChoice.id:null;
     TM.TEA_IDS.forEach(id=>{const c=CANS[id]; const lift=id===curTea?0.3:0; c.g.position.y+=(CAN_Y+lift-c.g.position.y)*Math.min(1,dt0*5);
       c.band.material.emissiveIntensity = id===recId ? 0.35+0.3*Math.sin(t*5) : (id===curTea?0.18:0);});
+    chLiq.visible=chLiq.scale.y>0.02; cupLiq.visible=cupLiq.scale.y>0.02;
     updCam(); renderer.render(scene,camera);
     const w=viewer.clientWidth||800,h=viewer.clientHeight||760;
     LBL.forEach(o=>{
