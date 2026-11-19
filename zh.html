@@ -506,9 +506,9 @@
   cyl(0.07,0.07,0.10,brass,-2.05,1.50,1.2,14);
   // 茶殻ダクト：幅のあるシュート（板金ダクト）
   const leafChute = curve([[0.72,3.15,CZ],[1.35,2.40,CZ+0.08],[1.95,1.32,1.2]]);
-  beam([0.72,3.15,CZ],[1.35,2.40,CZ+0.08],0.60,0.09,M(0x9aa3ab,{metalness:.55,roughness:.38,transparent:true,opacity:.6}));
-  beam([1.35,2.40,CZ+0.08],[1.95,1.32,1.2],0.60,0.09,M(0x9aa3ab,{metalness:.55,roughness:.38,transparent:true,opacity:.6}));
-  box(0.68,0.12,0.68,steel,0.72,3.19,CZ);
+  beam([0.72,3.15,CZ],[1.35,2.40,CZ+0.08],0.26,0.20,M(0x8d959c,{metalness:.5,roughness:.45}));
+  beam([1.35,2.40,CZ+0.08],[1.95,1.32,1.2],0.26,0.20,M(0x8d959c,{metalness:.5,roughness:.45}));
+  box(0.36,0.10,0.42,steel,0.72,3.19,CZ);
   const bin = box(1.05,0.95,1.05,M(0x2a2e33,{transparent:true,opacity:.5,depthWrite:false}),2.0,0.92,1.2); edges(bin,0x4b5563);
   const pile = cyl(0.38,0.42,1,M(0x3a2a1a,{roughness:.9}),2.0,0.5,1.2,20);
   pile.geometry.translate(0,0.5,0); pile.scale.y=0.001;
@@ -521,7 +521,7 @@
   const cup = new THREE.Group(); scene.add(cup); cup.position.set(CX,0.53,CZ);
   const cupG = new THREE.Mesh(new THREE.CylinderGeometry(0.46,0.38,1.0,36,1,true),glassM()); cupG.position.y=0.5; cup.add(cupG);
   const cupB = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.38,0.05,36),M(0xffffff,{transparent:true,opacity:.4})); cupB.position.y=0.025; cup.add(cupB);
-  const cupLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.43,0.37,1,36),M(0xc9a64a,{transparent:true,opacity:.85}));
+  const cupLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.43,0.37,1,36),M(0xc9a64a,{transparent:true,opacity:.55}));
   cupLiq.geometry.translate(0,0.5,0); cupLiq.position.y=0.05; cupLiq.scale.y=0.001; cupLiq.visible=false; cup.add(cupLiq);
   const steam=[]; for(let i=0;i<14;i++){const s=new THREE.Mesh(new THREE.SphereGeometry(0.07,10,10),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false}));scene.add(s);steam.push({m:s,u:Math.random(),x:(Math.random()-.5)*0.4,z:(Math.random()-.5)*0.4});}
 
