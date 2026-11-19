@@ -433,7 +433,7 @@
   for(let i=0;i<4;i++) box(0.25,0.18,0.06,dark,-0.6+i*0.4,2.9,-0.63);
   const CX=0, CZ=1.0;
   box(1.3,0.1,0.32,steel,CX,0.42,CZ);
-  box(3.0,0.06,2.0,M(0x9aa3ad,{metalness:.5,roughness:.4}),CX,0.5,CZ);
+  box(1.95,0.06,2.0,M(0x9aa3ad,{metalness:.5,roughness:.4}),CX,0.5,CZ);
 
   // cold water tank (left) and kettle (right)
   const tank = box(1.4,3.0,1.4,glassM(),-4.3,1.9,-0.5); edges(tank,0x8aa0ad);
@@ -519,16 +519,14 @@
   box(1.20,0.05,1.20,steel,-2.05,1.45,1.2);                               // タンク蓋
   cyl(0.078,0.078,0.14,brass,-2.05,1.54,1.2,14);                          // タンク口金（ホースがここに刺さる）
 
-  // ---- 茶殻：浸出室を倒して、開放トラフ（U 字シュート）を滑り落とす
-  const leafChute = curve([[0.70,3.20,CZ],[1.30,2.35,CZ+0.06],[1.98,1.42,1.19]]);
-  trough([0.70,3.20,CZ],[1.30,2.35,CZ+0.06],0.42,0.20,M(0x9aa3ab,{metalness:.55,roughness:.4,side:THREE.DoubleSide}));
-  trough([1.30,2.35,CZ+0.06],[1.98,1.42,1.19],0.42,0.20,M(0x9aa3ab,{metalness:.55,roughness:.4,side:THREE.DoubleSide}));
-  box(0.32,0.10,0.36,steel,0.70,3.22,CZ);                                  // 投入口の縁
-  const bin = box(1.05,0.95,1.05,M(0x2a2e33,{transparent:true,opacity:.5,depthWrite:false}),2.0,0.92,1.2); edges(bin,0x4b5563);
-  const binLid = box(1.02,0.04,1.02,steel,2.0,1.667,1.135); binLid.rotation.x=-0.55;   // 跳ね上げ蓋
-  cyl(0.05,0.05,0.18,brass,2.0,1.40,0.70,10).rotation.z=Math.PI/2;
-  box(0.34,0.09,0.06,steel,2.0,1.02,1.74);                                  // 引き出し取っ手
-  const pile = cyl(0.38,0.42,1,M(0x3a2a1a,{roughness:.9}),2.0,0.5,1.2,20);
+  // ---- 茶殻：滑らせない。浸出室を倒し、重力で真下の受け口へ落とす
+  const leafChute = curve([[0.62,3.28,CZ],[1.10,2.40,1.10],[1.58,1.66,1.18]]);
+  box(0.30,0.10,0.34,steel,0.66,3.24,CZ);                                  // 浸出室の排出口の縁
+  const bin = box(1.05,0.95,1.05,M(0x2a2e33,{transparent:true,opacity:.5,depthWrite:false}),1.62,0.92,1.2); edges(bin,0x4b5563);
+  cyl(0.68,0.42,0.36,steel,1.62,1.57,1.2,28,true);                         // 広口ファンネル（受け口）
+  cyl(0.70,0.70,0.04,brass,1.62,1.75,1.2,28);                              // ファンネルの縁
+  box(0.34,0.09,0.06,steel,1.62,1.02,1.74);                                // 引き出し取っ手
+  const pile = cyl(0.38,0.42,1,M(0x3a2a1a,{roughness:.9}),1.62,0.5,1.2,20);
   pile.geometry.translate(0,0.5,0); pile.scale.y=0.001;
   const sprayC = curve([[CX-0.45,4.17,CZ],[CX-0.1,3.8,CZ],[CX+0.2,3.3,CZ]]);
 
@@ -901,7 +899,7 @@
         dose.forEach((d,i)=>{ if(i>=n) return; const s=clamp01((k-0.22-d.delay*0.2)/0.3);
           if(s<=0){ tmpV.copy(d.loc).applyAxisAngle(ZAX,ang).add(chCenter); d.m.position.copy(tmpV); }
           else if(s<1){ leafChute.getPointAt(s,tmpV); d.m.position.copy(tmpV); }
-          else d.m.position.set(2.0+d.r*0.8*Math.cos(d.a),pileTop+0.03,1.2+d.r*0.8*Math.sin(d.a)); });
+          else d.m.position.set(1.62+d.r*0.6*Math.cos(d.a),pileTop+0.03,1.2+d.r*0.6*Math.sin(d.a)); });
         if(k>0.35&&k<0.75&&Math.random()<0.7) spawn(sprayC,0x9fd3ff);
         setValve(0xffaa33,k>0.4);
         if(k>0.4&&Math.random()<0.4) spawn(wasteTube,0xbcd6e6);
