@@ -517,11 +517,11 @@
   const wasteTube = curve(drainPath);
   tube(drainPath,0.070,M(0x3d4247,{roughness:.6,metalness:.05}));
   // ホースガイド：ベースに座金 → 支柱 → P クリップ（管を抱える）
-  for(const g of [[-1.10,2.38],[-1.40,2.06]]){
-    const gx=g[0], gy=g[1], h=gy-0.40;
-    cyl(0.085,0.085,0.02,steel,gx,0.415,1.03,14);                              // 座金
-    box(0.06,h,0.06,steel,gx,0.40+h/2,1.03);                                   // 支柱
-    box(0.145,0.145,0.13,M(0x17191c,{metalness:.35,roughness:.55}),gx,gy,1.03); // P クリップ
+  for(const g of [[-1.10,2.38,1.03],[-1.40,2.06,1.07]]){
+    const gx=g[0], gy=g[1], gz=g[2], h=gy-0.40;
+    cyl(0.085,0.085,0.02,steel,gx,0.415,gz,14);                              // 座金
+    box(0.06,h,0.06,steel,gx,0.40+h/2,gz);                                   // 支柱
+    box(0.145,0.145,0.13,M(0x17191c,{metalness:.35,roughness:.55}),gx,gy,gz); // P クリップ（ホースの実座標に合わせる）
   }
   const waste = box(1.15,1.05,1.15,glassM(),-2.05,0.92,1.2); edges(waste,0x8aa0ad);
   const wasteW = box(1.03,1,1.03,M(0x6b6257,{transparent:true,opacity:.5,depthWrite:false}),-2.05,0.42,1.2);
@@ -910,7 +910,9 @@
         const pileTop=0.5+Math.max(pile.scale.y,0.02);
         dose.forEach((d,i)=>{ if(i>=n) return; const s=clamp01((k-0.22-d.delay*0.2)/0.3);
           if(s<=0){ tmpV.copy(d.loc).applyAxisAngle(ZAX,ang).add(chCenter); d.m.position.copy(tmpV); }
-          else if(s<1){ leafChute.getPointAt(s,tmpV); d.m.position.copy(tmpV); }
+          else if(s<1){ leafChute.getPointAt(s,tmpV); const sway=d.r*0.16*Math.sin(s*5+d.ph);
+            d.m.position.set(tmpV.x+sway*Math.cos(d.a),tmpV.y,tmpV.z+sway*Math.sin(d.a));
+            d.m.rotation.set(t*d.sp*2.2,d.a+s*3.5,t*d.sp*1.6); }
           else d.m.position.set(1.62+d.r*0.6*Math.cos(d.a),pileTop+0.03,1.2+d.r*0.6*Math.sin(d.a)); });
         if(k>0.35&&k<0.75&&Math.random()<0.7) spawn(sprayC,0x9fd3ff);
         setValve(0xffaa33,k>0.4);
